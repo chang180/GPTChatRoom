@@ -2,21 +2,21 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use Inertia\Inertia;
 use App\Models\Message;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Inertia\Inertia;
 
 class ChatRoomController extends Controller
 {
     public function index()
     {
-        // 确保用户已认证
+        // 確保用戶已認證
         if (!Auth::check()) {
             abort(403, 'Unauthorized');
         }
 
-        // 加载最近的 50 条消息记录
+        // 加載最近的 50 條消息記錄
         $messages = Message::with('user')->latest()->take(50)->get();
 
         return Inertia::render('ChatRoom', [
@@ -27,28 +27,42 @@ class ChatRoomController extends Controller
 
     public function sendMessage(Request $request)
     {
-        // 确保用户已认证
+        // 確保用戶已認證
         if (!Auth::check()) {
             abort(403, 'Unauthorized');
         }
 
-        // 验证请求数据
+        // 驗證請求數據
         $data = $request->validate([
             'message' => 'required|string',
         ]);
 
-        // 创建新消息
+        // 創建新消息
         $message = Message::create([
             'user_id' => Auth::id(),
             'text' => $data['message'],
         ]);
 
-        // 调用 GPTController 来获取回复
+        // 調用 GPTController 來獲取回復
         $response = app(GPTController::class)->sendMessage($request);
+
+        if ($response->getStatusCode() == 200 && isset($response->original['choices'])) {
+            $gptMessageContent = $response->original['choices'][0]['message']['content'];
+            Message::create([
+                'user_id' => Auth::id(),
+                'text' => $gptMessageContent,
+            ]);
+        } else {
+            $errorMessage = $response->original['error'] ?? 'API request failed';
+            Message::create([
+                'user_id' => Auth::id(),
+                'text' => $errorMessage,
+            ]);
+        }
 
         return response()->json([
             'message' => $message,
-            'gptResponse' => $response->original['choices'][0]['message']['content'],
+            'gptResponse' => $gptMessageContent ?? $errorMessage,
         ]);
     }
 }

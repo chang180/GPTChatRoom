@@ -22,10 +22,11 @@ class GPTController extends Controller
             ],
         ]);
 
-        if ($response->failed()) {
-            return response()->json(['error' => $response->json()['error']], $response->status());
+        if ($response->failed() || isset($response->json()['error'])) {
+            return response()->json(['error' => $response->json()['error']['message'] ?? 'API request failed'], 500);
         }
 
         return response()->json($response->json());
     }
 }
+
