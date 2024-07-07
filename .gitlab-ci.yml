@@ -30,6 +30,13 @@ deploy:
         echo 'DB_DATABASE=${DB_DATABASE}' >> .env &&
         echo 'DB_USERNAME=${DB_USERNAME}' >> .env &&
         echo 'DB_PASSWORD=${DB_PASSWORD}' >> .env &&
+        echo 'MAIL_MAILER=smtp' >> .env &&
+        echo 'MAIL_HOST=${MAIL_HOST}' >> .env &&
+        echo 'MAIL_PORT=${MAIL_PORT}' >> .env &&
+        echo 'MAIL_USERNAME=${MAIL_USERNAME}' >> .env &&
+        echo 'MAIL_PASSWORD=${MAIL_PASSWORD}' >> .env &&
+        echo 'MAIL_ENCRYPTION=${MAIL_ENCRYPTION}' >> .env &&
+        echo 'OPENAI_API_KEY=${OPENAI_API_KEY}' >> .env &&
         npm install &&
         php artisan key:generate &&
         php artisan migrate --force &&
