@@ -1,54 +1,87 @@
+<script>
+import AppLayout from '@/Layouts/AppLayout.vue';
+</script>
+
 <template>
-    <div>
-        <h1>Chat Room</h1>
-        <div id="messages">
-            <div v-for="message in messages" :key="message.id">
-                <strong>{{ message.user }}:</strong> {{ message.text }}
+    <AppLayout title="Chat Room">
+        <div class="flex flex-col h-screen">
+            <h1 class="text-2xl font-bold p-4 bg-blue-600 text-white">Chat Room</h1>
+            <div id="messages" class="flex-1 p-4 overflow-y-auto bg-gray-100">
+                <div v-for="(message, index) in messages" :key="index" class="mb-2">
+                    <strong>{{ message.user.name }}:</strong> {{ message.text }}
+                    <span class="text-gray-500 text-xs ml-2">{{ message.created_at }}</span>
+                </div>
+            </div>
+            <div class="p-4 bg-white flex">
+                <input
+                    v-model="newMessage"
+                    @keyup.enter="sendMessage"
+                    placeholder="Type a message"
+                    class="flex-1 border p-2 rounded"
+                />
+                <button
+                    @click="sendMessage"
+                    class="ml-2 p-2 bg-blue-600 text-white rounded"
+                >
+                    Send
+                </button>
             </div>
         </div>
-        <input
-            v-model="newMessage"
-            @keyup.enter="sendMessage"
-            placeholder="Type a message"
-        />
-        <button @click="sendMessage">Send</button>
-    </div>
+    </AppLayout>
 </template>
 
-<script>
-import { ref } from "vue";
-import { usePage } from "@inertiajs/inertia-vue3";
+<script setup>
+import { ref, onMounted } from 'vue';
+import { usePage } from '@inertiajs/inertia-vue3';
+import axios from 'axios';
+import { route } from 'ziggy-js';
 
-export default {
-    setup() {
-        const { props } = usePage();
-        const messages = ref([]);
-        const newMessage = ref("");
+// 获取页面属性
+const { props } = usePage();
+const messages = ref(props.messages || []);
+const newMessage = ref('');
+const user = ref(props.user);
 
-        const sendMessage = async () => {
-            if (newMessage.value.trim() !== "") {
-                messages.value.push({
-                    user: props.auth.user.name,
-                    text: newMessage.value,
-                });
-                const response = await axios.post(route("send-message"), {
-                    message: newMessage.value,
-                });
-                messages.value.push({
-                    user: "GPT-3.5",
-                    text: response.data.choices[0].message.content,
-                });
-                newMessage.value = "";
-            }
-        };
+const sendMessage = async () => {
+    if (newMessage.value.trim() !== '') {
+        const messageContent = newMessage.value;
+        newMessage.value = '';
 
-        return {
-            messages,
-            newMessage,
-            sendMessage,
-        };
-    },
+        // 在本地添加用户的消息
+        messages.value.push({
+            user: user.value,
+            text: messageContent,
+            created_at: new Date().toLocaleTimeString(),
+        });
+
+        try {
+            const response = await axios.post(route('chat.send-message'), {
+                message: messageContent,
+            });
+
+            // 在本地添加 GPT 的回复
+            messages.value.push({
+                user: { name: 'GPT-3.5' },
+                text: response.data.gptResponse,
+                created_at: new Date().toLocaleTimeString(),
+            });
+        } catch (error) {
+            console.error('Message send failed', error);
+        }
+
+        scrollToBottom();
+    }
 };
+
+// 滚动到底部
+const scrollToBottom = () => {
+    const messagesContainer = document.getElementById('messages');
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+};
+
+onMounted(() => {
+    scrollToBottom();
+});
 </script>
 
 <style scoped>
