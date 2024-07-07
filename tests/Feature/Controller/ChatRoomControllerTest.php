@@ -9,7 +9,6 @@ use Illuminate\Support\Facades\Http;
 use Inertia\Testing\AssertableInertia as Assert;
 
 
-
 it('shows the chat room for authenticated users', function () {
     // Create a test user
     $user = User::factory()->create();
