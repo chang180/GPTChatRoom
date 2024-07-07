@@ -26,9 +26,14 @@ deploy:
         php /home/u625132372/composer install &&
         npm install -g dotenv-cli &&
         cp .env.build .env &&
+        echo 'DB_CONNECTION=${DB_CONNECTION}' >> .env &&
+        echo 'DB_HOST=${DB_HOST}' >> .env &&
+        echo 'DB_PORT=${DB_PORT}' >> .env &&
+        echo 'DB_DATABASE=${DB_DATABASE}' >> .env &&
+        echo 'DB_USERNAME=${DB_USERNAME}' >> .env &&
+        echo 'DB_PASSWORD=${DB_PASSWORD}' >> .env &&
         npm install &&
         php artisan key:generate &&
-        php artisan migrate:fresh --env=testing &&
         php artisan migrate --force &&
         php artisan config:cache &&
         php artisan route:cache &&
