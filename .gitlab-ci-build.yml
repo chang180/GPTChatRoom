@@ -24,8 +24,8 @@ deploy:
           git rebase origin/master;
         fi &&
         php /home/u625132372/composer install &&
-        npm install -g dotenv-cli
-        cp .env.build .env
+        npm install -g dotenv-cli &&
+        cp .env.build .env &&
         npm install &&
         php artisan key:generate &&
         php artisan migrate:fresh --env=testing &&
