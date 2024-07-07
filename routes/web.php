@@ -3,6 +3,8 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
+use App\Http\Controllers\ChatRoomController;
+use App\Http\Controllers\GPTController;
 
 Route::get('/', function () {
     return Inertia::render('Welcome', [
@@ -21,4 +23,10 @@ Route::middleware([
     Route::get('/dashboard', function () {
         return Inertia::render('Dashboard');
     })->name('dashboard');
+
+    // Chat room route
+    Route::get('/chat', [ChatRoomController::class, 'index'])->name('chat');
+
+    // GPT API message route
+    Route::post('/send-message', [GPTController::class, 'sendMessage'])->name('send-message');
 });
