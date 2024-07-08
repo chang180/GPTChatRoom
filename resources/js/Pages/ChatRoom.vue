@@ -28,7 +28,6 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
-import { usePage } from '@inertiajs/vue3';
 import axios from 'axios';
 import { route } from 'ziggy-js';
 import AppLayout from '@/Layouts/AppLayout.vue';
@@ -62,7 +61,7 @@ const sendMessage = async () => {
 
             // 在本地添加 GPT 的回复
             messages.value.push({
-                user: { name: 'GPT-3.5' },
+                user: { name: 'OpenAI' },
                 text: response.data.gptResponse,
                 created_at: new Date().toLocaleTimeString(),
             });

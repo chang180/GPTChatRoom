@@ -3,30 +3,31 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
+use OpenAI\Laravel\Facades\OpenAI;
+use Illuminate\Support\Facades\Log;
 
 class GPTController extends Controller
 {
     public function sendMessage(Request $request)
     {
-        $apiKey = config('services.openai.api_key');
+        $apiKey = config('openai.api_key');
 
         if (!$apiKey) {
             return response()->json(['error' => 'API key missing'], 500);
         }
 
-        $response = Http::withToken($apiKey)->post('https://api.openai.com/v1/chat/completions', [
-            'model' => 'gpt-4',
-            'messages' => [
-                ['role' => 'user', 'content' => $request->input('message')]
-            ],
-        ]);
+        try {
+            $response = OpenAI::chat()->create([
+                'model' => 'gpt-4o',
+                'messages' => [
+                    ['role' => 'user', 'content' => $request->input('message')]
+                ],
+            ]);
 
-        if ($response->failed() || isset($response->json()['error'])) {
-            return response()->json(['error' => $response->json()['error']['message'] ?? 'API request failed'], 500);
+            return response()->json($response);
+        } catch (\Exception $e) {
+            Log::error('OpenAI API request failed', ['error' => $e->getMessage()]);
+            return response()->json(['error' => 'API request failed: ' . $e->getMessage()], 500);
         }
-
-        return response()->json($response->json());
     }
 }
-
