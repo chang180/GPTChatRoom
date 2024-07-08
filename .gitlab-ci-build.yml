@@ -38,6 +38,8 @@ deploy:
         echo 'MAIL_ENCRYPTION=${MAIL_ENCRYPTION}' >> .env &&
         echo 'OPENAI_API_KEY=${OPENAI_API_KEY}' >> .env &&
         npm install &&
+        npm run build &&
+        cp ./public/build/.vite/manifest.json ./public/build/assets/manifest.json &&
         php artisan key:generate &&
         php artisan migrate --force &&
         php artisan config:cache &&

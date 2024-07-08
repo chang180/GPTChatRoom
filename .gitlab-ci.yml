@@ -39,7 +39,7 @@ deploy:
         echo 'OPENAI_API_KEY=${OPENAI_API_KEY}' >> .env &&
         npm install &&
         npm run build &&
-        cp ./public/build/.vite/manifest.json ./public/build/assets/manifest.json &&
+        cp .public_html/gptchatroom/public/build/.vite/manifest.json .public_html/gptchatroom/public/build/assets/manifest.json &&
         php artisan key:generate &&
         php artisan migrate --force &&
         php artisan config:cache &&
