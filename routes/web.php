@@ -20,6 +20,9 @@ Route::middleware([
     // Chat room route
     Route::get('/chat', [ChatRoomController::class, 'index'])->name('chat.index');
 
+    // Chat room client route
+    Route::get('/chat-client', [ChatRoomController::class, 'client'])->name('chat.client');
+
     // GPT API message route
     Route::post('/chat/send-message', [ChatRoomController::class, 'sendMessage'])->name('chat.send-message');
 });

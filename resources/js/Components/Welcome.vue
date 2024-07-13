@@ -7,8 +7,6 @@ import ApplicationLogo from '@/Components/ApplicationLogo.vue';
     <Head title="Welcome to Your Dashboard" />
 
     <div class="p-6 bg-white border-b border-gray-200 lg:p-8">
-        <ApplicationLogo class="block w-auto h-12 mx-auto" />
-
         <h1 class="mt-8 text-2xl font-medium text-center text-gray-900">
             Welcome to GptChatRoom Dashboard!
         </h1>
