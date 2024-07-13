@@ -4,7 +4,6 @@ use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\ChatRoomController;
-use App\Http\Controllers\GPTController;
 
 Route::get('/', function () {
     return Inertia::render('Welcome', [
@@ -30,3 +29,4 @@ Route::middleware([
     // GPT API message route
     Route::post('/chat/send-message', [ChatRoomController::class, 'sendMessage'])->name('chat.send-message');
 });
+

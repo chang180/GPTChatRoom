@@ -1,15 +1,16 @@
 <?php
 
-use App\Models\Message;
 use App\Models\User;
+use Illuminate\Contracts\Auth\Authenticatable;
+use Illuminate\Support\Facades\Session;
 use function Pest\Laravel\actingAs;
 use function Pest\Laravel\get;
 use function Pest\Laravel\post;
 use Inertia\Testing\AssertableInertia as Assert;
 
-
 it('shows the chat room for authenticated users', function () {
     // Create a test user
+    /** @var Authenticatable $user */
     $user = User::factory()->create();
 
     // Act as the test user
@@ -37,14 +38,20 @@ it('returns unauthorized for unauthenticated users', function () {
 
 it('sends a message and receives a response', function () {
     // Create a test user
+    /** @var Authenticatable $user */
     $user = User::factory()->create();
 
     // Act as the test user
     actingAs($user);
 
+    // Generate a CSRF token
+    Session::start();
+    $csrfToken = csrf_token();
+
     // Send a POST request to send a message
     $response = post(route('chat.send-message'), [
-        'message' => 'Hello, GPT!'
+        'message' => 'Hello, GPT!',
+        '_token' => $csrfToken, // Include the CSRF token in the request
     ]);
 
     // Assert the response is correct
@@ -71,7 +78,8 @@ it('sends a message and receives a response', function () {
     // Assert the GPT response is saved in the database
     $this->assertDatabaseHas('messages', [
         'user_id' => $user->id,
-        'text' => $response['gptResponse'],
+        'text' => $response->json('gptResponse'),
         'sender_type' => 'gpt',
     ]);
 });
+

@@ -6,9 +6,17 @@ use App\Models\Message;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
+use App\Services\GPTService;
 
 class ChatRoomController extends Controller
 {
+    protected $gptService;
+
+    public function __construct(GPTService $gptService)
+    {
+        $this->gptService = $gptService;
+    }
+
     public function index()
     {
         // 確保用戶已認證
@@ -44,29 +52,28 @@ class ChatRoomController extends Controller
             'sender_type' => 'user',
         ]);
 
-        // 調用 GPTController 來獲取回復
-        $response = app(GPTController::class)->sendMessage($request);
-
-        if ($response->getStatusCode() == 200 && isset($response->original['choices'])) {
-            $gptMessageContent = $response->original['choices'][0]['message']['content'];
-            Message::create([
+        try {
+            $gptResponse = $this->gptService->sendMessage($data['message']);
+            $gptMessageContent = $gptResponse['choices'][0]['message']['content'];
+            $gptMessage = Message::create([
                 'user_id' => Auth::id(),
                 'text' => $gptMessageContent,
                 'sender_type' => 'gpt',
             ]);
-        } else {
-            $errorMessage = $response->original['error'] ?? 'API request failed';
+
+            return response()->json([
+                'message' => $message,
+                'gptResponse' => $gptMessage->text,
+            ]);
+        } catch (\Exception $e) {
+            $errorMessage = $e->getMessage();
             Message::create([
                 'user_id' => Auth::id(),
                 'text' => $errorMessage,
                 'sender_type' => 'gpt', // 假設錯誤消息也來自 GPT
             ]);
+
+            return response()->json(['error' => $errorMessage], 500);
         }
-
-        return response()->json([
-            'message' => $message,
-            'gptResponse' => $gptMessageContent ?? $errorMessage,
-        ]);
     }
-
 }
