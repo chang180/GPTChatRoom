@@ -37,10 +37,11 @@ class ChatRoomController extends Controller
             'message' => 'required|string',
         ]);
 
-        // 創建新消息
+        // 創建新消息，設置 sender_type 為 'user'
         $message = Message::create([
             'user_id' => Auth::id(),
             'text' => $data['message'],
+            'sender_type' => 'user',
         ]);
 
         // 調用 GPTController 來獲取回復
@@ -51,12 +52,14 @@ class ChatRoomController extends Controller
             Message::create([
                 'user_id' => Auth::id(),
                 'text' => $gptMessageContent,
+                'sender_type' => 'gpt',
             ]);
         } else {
             $errorMessage = $response->original['error'] ?? 'API request failed';
             Message::create([
                 'user_id' => Auth::id(),
                 'text' => $errorMessage,
+                'sender_type' => 'gpt', // 假設錯誤消息也來自 GPT
             ]);
         }
 
@@ -65,4 +68,5 @@ class ChatRoomController extends Controller
             'gptResponse' => $gptMessageContent ?? $errorMessage,
         ]);
     }
+
 }

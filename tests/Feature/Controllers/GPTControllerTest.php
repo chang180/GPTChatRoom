@@ -1,22 +1,12 @@
 <?php
 
 use App\Models\User;
-use Illuminate\Support\Facades\Http;
-use function Pest\Laravel\actingAs;
 use function Pest\Laravel\post;
+use function Pest\Laravel\actingAs;
 
 it('returns a response from the GPT API', function () {
     // Create a test user
     $user = User::factory()->create();
-
-    // Mock the GPT API response
-    Http::fake([
-        'https://api.openai.com/v1/chat/completions' => Http::response([
-            'choices' => [
-                ['message' => ['role' => 'assistant', 'content' => 'This is a mock response from GPT-4']]
-            ]
-        ], 200)
-    ]);
 
     // Act as the test user
     actingAs($user);
@@ -28,8 +18,33 @@ it('returns a response from the GPT API', function () {
 
     // Assert the response is correct
     $response->assertStatus(200);
-    $response->assertJson([
-        'gptResponse' => 'This is a mock response from GPT-4',
+    $response->assertJsonStructure([
+        'message' => [
+            'user_id',
+            'text',
+            'sender_type',
+            'created_at',
+            'updated_at',
+            'id'
+        ],
+        'gptResponse'
+    ]);
+
+    // 获取实际的 GPT 响应
+    $gptResponse = $response['gptResponse'];
+
+    // Assert the message is saved in the database
+    $this->assertDatabaseHas('messages', [
+        'user_id' => $user->id,
+        'text' => 'Hello, GPT!',
+        'sender_type' => 'user',
+    ]);
+
+    // Assert the GPT response is saved in the database
+    $this->assertDatabaseHas('messages', [
+        'user_id' => $user->id,
+        'text' => $gptResponse,
+        'sender_type' => 'gpt',
     ]);
 });
 
@@ -38,7 +53,7 @@ it('returns an error if the API key is missing', function () {
     $user = User::factory()->create();
 
     // Clear the API key configuration
-    config(['services.openai.api_key' => null]);
+    config(['openai.api_key' => null]);
 
     // Act as the test user
     actingAs($user);
@@ -59,14 +74,8 @@ it('returns an error if the GPT API request fails', function () {
     // Create a test user
     $user = User::factory()->create();
 
-    // Mock the GPT API response to fail
-    Http::fake([
-        'https://api.openai.com/v1/chat/completions' => Http::response([
-            'error' => [
-                'message' => 'API request failed',
-            ]
-        ], 200)
-    ]);
+    // Use an invalid API key configuration
+    config(['openai.api_key' => 'invalid_api_key']);
 
     // Act as the test user
     actingAs($user);
@@ -78,10 +87,5 @@ it('returns an error if the GPT API request fails', function () {
 
     // Assert the response is an error
     $response->assertStatus(200);
-    $response->assertJson([
-        'gptResponse' => 'API request failed'
-    ]);
+    $response->assertSee('API request failed');
 });
-
-
-

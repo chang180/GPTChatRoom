@@ -17,7 +17,7 @@ use Tests\TestCase;
 uses(
     TestCase::class,
     LazilyRefreshDatabase::class,
-)->in('Feature');
+)->in('Feature', 'Unit');
 
 /*
 |--------------------------------------------------------------------------

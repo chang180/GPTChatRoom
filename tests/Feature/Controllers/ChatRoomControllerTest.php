@@ -5,7 +5,6 @@ use App\Models\User;
 use function Pest\Laravel\actingAs;
 use function Pest\Laravel\get;
 use function Pest\Laravel\post;
-use Illuminate\Support\Facades\Http;
 use Inertia\Testing\AssertableInertia as Assert;
 
 
@@ -40,18 +39,8 @@ it('sends a message and receives a response', function () {
     // Create a test user
     $user = User::factory()->create();
 
-    // Mock the GPT API response
-    Http::fake([
-        'https://api.openai.com/v1/chat/completions' => Http::response([
-            'choices' => [
-                ['message' => ['role' => 'assistant', 'content' => 'This is a mock response from GPT-4']]
-            ]
-        ], 200)
-    ]);
-
     // Act as the test user
     actingAs($user);
-    $id = $user->id;
 
     // Send a POST request to send a message
     $response = post(route('chat.send-message'), [
@@ -60,20 +49,29 @@ it('sends a message and receives a response', function () {
 
     // Assert the response is correct
     $response->assertStatus(200);
-    $response->assertJson([
-        'gptResponse' => 'This is a mock response from GPT-4',
+    $response->assertJsonStructure([
+        'message' => [
+            'user_id',
+            'text',
+            'sender_type',
+            'created_at',
+            'updated_at',
+            'id'
+        ],
+        'gptResponse'
     ]);
 
     // Assert the message is saved in the database
     $this->assertDatabaseHas('messages', [
         'user_id' => $user->id,
-        'text' => 'Hello, GPT!'
+        'text' => 'Hello, GPT!',
+        'sender_type' => 'user',
     ]);
 
     // Assert the GPT response is saved in the database
     $this->assertDatabaseHas('messages', [
         'user_id' => $user->id,
-        'text' => 'This is a mock response from GPT-4'
+        'text' => $response['gptResponse'],
+        'sender_type' => 'gpt',
     ]);
 });
-

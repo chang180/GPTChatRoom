@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->text('text');
+            $table->string('sender_type'); // 新增的欄位
             $table->timestamps();
         });
     }
