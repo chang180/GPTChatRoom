@@ -14,7 +14,7 @@
             <input
                 v-model="newMessage"
                 @keyup.enter="sendMessage"
-                placeholder="Type a message"
+                placeholder="Input a message"
                 class="flex-1 p-2 border rounded"
             />
             <button
