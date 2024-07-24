@@ -22,7 +22,7 @@ class GPTService
 
         try {
             $response = OpenAI::chat()->create([
-                'model' => 'gpt-4o',
+                'model' => 'gpt-4o-mini',
                 'messages' => [
                     ['role' => 'user', 'content' => $message]
                 ],
