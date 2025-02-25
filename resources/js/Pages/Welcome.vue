@@ -39,7 +39,7 @@ defineProps({
         </header>
 
         <main class="flex flex-col items-center justify-center flex-1 w-full max-w-2xl px-6 py-6 lg:max-w-7xl">
-            <img :src="illustration" alt="GptChatRoom Illustration" class="mb-6 rounded-lg shadow-lg max-w-full max-h-90%">
+            <img :src="illustration" alt="GptChatRoom Illustration" class="mb-6 rounded-lg shadow-lg max-w-full max-h-80">
             <h2 class="mb-6 text-xl font-semibold">Welcome to GptChatRoom</h2>
             <p class="mb-4">This is a simple landing page created with Laravel and Inertia.js. Use the navigation links to log in or register, and explore the features of our application.</p>
             <p class="text-sm text-gray-700">Laravel v{{ laravelVersion }} (PHP v{{ phpVersion }})</p>
