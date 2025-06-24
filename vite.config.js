@@ -19,8 +19,8 @@ export default defineConfig({
         }),
     ],
     build: {
-        manifest: true, // 添加这个配置项来生成manifest文件
-        outDir: 'public/build', // 生成文件的目录
+        // manifest: true, // 添加这个配置项来生成manifest文件
+        // outDir: 'public/build', // 生成文件的目录
         rollupOptions: {
             input: {
                 app: 'resources/js/app.js', // 入口文件
