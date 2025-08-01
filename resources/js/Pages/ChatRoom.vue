@@ -14,11 +14,14 @@ const messages = ref(props.messages || []);
 const newMessage = ref('');
 const user = ref(props.user);
 const loading = ref(false);
+const error = ref(null); // 新增錯誤狀態
+const streamingMessage = ref(null); // 用於存儲正在流式接收的消息
 
 const sendMessage = async () => {
     if (newMessage.value.trim() !== '') {
         const messageContent = newMessage.value;
         newMessage.value = '';
+        error.value = null; // 重置錯誤狀態
 
         messages.value.push({
             user: user.value,
@@ -30,24 +33,89 @@ const sendMessage = async () => {
         loading.value = true;
 
         try {
-            const response = await axios.post(route('chat.send-message'), {
-                message: messageContent,
-            });
-
-            messages.value.push({
+            // 創建一個空的流式消息
+            streamingMessage.value = {
                 user: { name: 'GPT' },
-                text: response.data.gptResponse,
+                text: '', // 初始為空，將逐漸填充
                 created_at: new Date().toISOString(),
                 sender_type: 'gpt',
-            });
+                isStreaming: true, // 標記為正在流式接收
+            };
 
-            await nextTick();
+            // 將流式消息添加到消息列表
+            messages.value.push(streamingMessage.value);
+
+            // 使用 EventSource 接收流式數據
+            const eventSource = new EventSource(route('chat.send-message-stream') + '?message=' + encodeURIComponent(messageContent));
+
+            eventSource.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+
+                // 處理消息 ID
+                if (data.messageId) {
+                    // 可以保存消息 ID 以備後用
+                    console.log('Message ID:', data.messageId);
+                }
+
+                // 處理內容片段
+                if (data.content) {
+                    streamingMessage.value.text += data.content;
+                }
+
+                // 處理完成信號
+                if (data.done) {
+                    eventSource.close();
             loading.value = false;
+                    streamingMessage.value.isStreaming = false; // 標記流式接收完成
+                }
+};
+
+            eventSource.onerror = (error) => {
+                console.error('EventSource error:', error);
+                eventSource.close();
+                loading.value = false;
+                streamingMessage.value.isStreaming = false;
+
+                // 處理錯誤
+                handleError(new Error('流式連接錯誤，請稍後再試。'));
+};
+
         } catch (error) {
             console.error('Message send failed', error);
             loading.value = false;
+            handleError(error);
         }
     }
+};
+
+// 處理錯誤的函數
+const handleError = (error) => {
+    // 添加錯誤處理
+    let errorMessage = '發送訊息失敗，請稍後再試。';
+
+    if (error.response) {
+        // 服務器回應了錯誤
+        if (error.response.status === 429) {
+            errorMessage = 'API 請求頻率過高，請稍後再試。';
+        } else if (error.response.data && error.response.data.message) {
+            errorMessage = `錯誤: ${error.response.data.message}`;
+        } else {
+            errorMessage = `伺服器錯誤 (${error.response.status})，請稍後再試。`;
+        }
+    } else if (error.request) {
+        // 請求已發送但沒有收到回應
+        errorMessage = '無法連接到伺服器，請檢查您的網絡連接。';
+    }
+
+    // 將錯誤訊息添加到對話中
+    messages.value.push({
+        user: { name: 'System' },
+        text: errorMessage,
+        created_at: new Date().toISOString(),
+        sender_type: 'error',
+    });
+
+    error.value = errorMessage;
 };
 
 const sortedMessages = computed(() => {
@@ -66,7 +134,10 @@ const formatDate = (dateString) => {
     return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 };
 
-// 不再需要 scrollToBottom 函數
+// 清除錯誤訊息
+const clearError = () => {
+    error.value = null;
+};
 </script>
 
 <template>
@@ -100,42 +171,76 @@ const formatDate = (dateString) => {
                                 <span v-else>處理中...</span>
                             </button>
                         </div>
+
+                        <!-- 錯誤提示 -->
+                        <div v-if="error" class="mt-2 p-2 bg-red-100 text-red-700 rounded-lg flex justify-between items-center">
+                            <span>{{ error }}</span>
+                            <button @click="clearError" class="text-red-500 hover:text-red-700">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                </svg>
+                            </button>
+                        </div>
                     </div>
 
                     <!-- 訊息區域 - 反向排列 -->
                     <div id="messages" class="flex-1 p-4 overflow-y-auto bg-gray-50 min-h-0">
                         <div v-for="(message, index) in sortedMessages" :key="index" class="mb-3">
-                            <div :class="message.sender_type === 'gpt' ? 'bg-blue-100 p-3 rounded-lg' : 'bg-white p-3 rounded-lg border'">
+                            <div :class="{
+                                'bg-blue-100 p-3 rounded-lg': message.sender_type === 'gpt',
+                                'bg-white p-3 rounded-lg border': message.sender_type === 'user',
+                                'bg-red-50 p-3 rounded-lg border border-red-200': message.sender_type === 'error'
+                            }">
                                 <div class="flex items-start space-x-2">
                                     <div class="flex-shrink-0">
                                         <span class="inline-flex items-center justify-center w-8 h-8 text-sm font-medium text-white rounded-full"
-                                              :class="message.sender_type === 'gpt' ? 'bg-blue-500' : 'bg-gray-500'">
-                                            {{ message.sender_type === 'gpt' ? 'AI' : message.user.name.charAt(0).toUpperCase() }}
+                                              :class="{
+                                                  'bg-blue-500': message.sender_type === 'gpt',
+                                                  'bg-gray-500': message.sender_type === 'user',
+                                                  'bg-red-500': message.sender_type === 'error'
+                                              }">
+                                            {{ message.sender_type === 'gpt' ? 'AI' :
+                                               message.sender_type === 'error' ? '!' :
+                                               message.user.name.charAt(0).toUpperCase() }}
                                         </span>
                                     </div>
                                     <div class="flex-1 min-w-0">
                                         <div class="flex items-center space-x-2">
-                                            <span class="text-sm font-medium text-gray-900">
-                                                {{ message.sender_type === 'gpt' ? 'GPT Assistant' : message.user.name }}
+                                            <span class="text-sm font-medium"
+                                                  :class="{
+                                                      'text-gray-900': message.sender_type !== 'error',
+                                                      'text-red-700': message.sender_type === 'error'
+                                                  }">
+                                                {{ message.sender_type === 'gpt' ? 'GPT Assistant' :
+                                                   message.sender_type === 'error' ? '系統訊息' :
+                                                   message.user.name }}
                                             </span>
                                             <span class="text-xs text-gray-500">
                                                 {{ formatDate(message.created_at) }}
                                             </span>
+                                            <!-- 顯示流式接收指示器 -->
+                                            <span v-if="message.isStreaming" class="inline-flex items-center ml-2">
+                                                <span class="typing-indicator"></span>
+                                            </span>
                                         </div>
-                                        <div class="mt-1 text-sm text-gray-700"
+                                        <div class="mt-1 text-sm"
+                                             :class="{
+                                                 'text-gray-700': message.sender_type !== 'error',
+                                                 'text-red-600': message.sender_type === 'error'
+                                             }"
                                              v-html="message.sender_type === 'gpt' ? marked.parse(message.text) : message.text">
-                                        </div>
-                                    </div>
-                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
+        </div>
+            </div>
+        </div>
 
-        <!-- 載入遮罩 -->
-        <div v-if="loading" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-800 bg-opacity-50">
+        <!-- 載入遮罩 (只在初始加載時顯示) -->
+        <div v-if="loading && !streamingMessage" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-800 bg-opacity-50">
             <div class="loader"></div>
         </div>
     </AppLayout>
@@ -175,6 +280,30 @@ const formatDate = (dateString) => {
     }
 }
 
+/* 打字指示器動畫 */
+.typing-indicator {
+    display: inline-block;
+    width: 20px;
+    height: 10px;
+    position: relative;
+}
+
+.typing-indicator::after {
+    content: '...';
+    position: absolute;
+    left: 0;
+    top: -5px;
+    animation: typing 1.5s infinite;
+    color: #3b82f6;
+    font-weight: bold;
+}
+
+@keyframes typing {
+    0%, 20% { content: '.'; }
+    40%, 60% { content: '..'; }
+    80%, 100% { content: '...'; }
+}
+
 /* Markdown 樣式 */
 #messages :deep(h1),
 #messages :deep(h2),
@@ -187,7 +316,6 @@ const formatDate = (dateString) => {
 #messages :deep(h1) { font-size: 1.25rem; }
 #messages :deep(h2) { font-size: 1.125rem; }
 #messages :deep(h3) { font-size: 1rem; }
-
 #messages :deep(code) {
     background-color: #f3f4f6;
     padding: 0.125rem 0.25rem;
