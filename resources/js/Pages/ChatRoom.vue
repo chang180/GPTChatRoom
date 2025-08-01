@@ -27,8 +27,6 @@ const sendMessage = async () => {
             sender_type: 'user',
         });
 
-        scrollToBottom();
-
         loading.value = true;
 
         try {
@@ -45,7 +43,6 @@ const sendMessage = async () => {
 
             await nextTick();
             loading.value = false;
-            scrollToBottom();
         } catch (error) {
             console.error('Message send failed', error);
             loading.value = false;
@@ -53,15 +50,9 @@ const sendMessage = async () => {
     }
 };
 
-const scrollToBottom = () => {
-    const messagesContainer = document.getElementById('messages');
-    if (messagesContainer) {
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    }
-};
-
 const sortedMessages = computed(() => {
-    return messages.value.slice().sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+    // 反向排序，最新的消息在前面
+    return messages.value.slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 });
 
 const formatDate = (dateString) => {
@@ -75,15 +66,11 @@ const formatDate = (dateString) => {
     return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 };
 
-onMounted(() => {
-    scrollToBottom();
-});
+// 不再需要 scrollToBottom 函數
 </script>
 
 <template>
     <AppLayout title="Chatroom">
-        <!-- 移除 header，讓聊天室佔用更多空間 -->
-
         <!-- 聊天室主容器 - 佔滿可用空間 -->
         <div class="h-screen flex flex-col pt-16">
             <div class="flex-1 flex flex-col bg-white">
@@ -94,7 +81,28 @@ onMounted(() => {
 
                 <!-- 聊天室容器 -->
                 <div class="flex flex-col flex-1 min-h-0">
-                    <!-- 訊息區域 -->
+                    <!-- 輸入區域 - 移到上面 -->
+                    <div class="p-4 bg-white border-b flex-shrink-0">
+                        <div class="flex space-x-3">
+                            <input
+                                v-model="newMessage"
+                                @keyup.enter="sendMessage"
+                                placeholder="輸入您的訊息..."
+                                class="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                :disabled="loading"
+                            />
+                            <button
+                                @click="sendMessage"
+                                class="px-6 py-3 text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                                :disabled="loading || !newMessage.trim()"
+                            >
+                                <span v-if="!loading">發送</span>
+                                <span v-else>處理中...</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 訊息區域 - 反向排列 -->
                     <div id="messages" class="flex-1 p-4 overflow-y-auto bg-gray-50 min-h-0">
                         <div v-for="(message, index) in sortedMessages" :key="index" class="mb-3">
                             <div :class="message.sender_type === 'gpt' ? 'bg-blue-100 p-3 rounded-lg' : 'bg-white p-3 rounded-lg border'">
@@ -122,27 +130,6 @@ onMounted(() => {
                             </div>
                         </div>
                     </div>
-
-                    <!-- 輸入區域 -->
-                    <div class="p-4 bg-white border-t flex-shrink-0">
-                        <div class="flex space-x-3">
-                            <input
-                                v-model="newMessage"
-                                @keyup.enter="sendMessage"
-                                placeholder="輸入您的訊息..."
-                                class="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                :disabled="loading"
-                            />
-                            <button
-                                @click="sendMessage"
-                                class="px-6 py-3 text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                                :disabled="loading || !newMessage.trim()"
-                            >
-                                <span v-if="!loading">發送</span>
-                                <span v-else>處理中...</span>
-                            </button>
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>
@@ -155,8 +142,7 @@ onMounted(() => {
 </template>
 
 <style scoped>
-/* 移除訊息區域的 max-height 限制，讓它使用 flex-1 進行自動高度計算 */
-
+/* CSS 保持不變 */
 .loader {
     border: 4px solid #f3f3f3;
     border-radius: 50%;
