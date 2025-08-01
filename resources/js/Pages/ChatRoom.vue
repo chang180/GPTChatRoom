@@ -75,6 +75,9 @@ const sendMessage = async () => {
             sender_type: 'gpt',
             isStreaming: true,
         };
+
+        // 將消息添加到響應式數組中，這樣 Vue 可以追蹤變化
+        const messageIndex = messages.length;
         messages.push(gptMessage);
 
         // 觸發更新，確保新消息顯示在最上方
@@ -119,14 +122,14 @@ const sendMessage = async () => {
 
                                 // 處理內容
                                 if ('content' in eventData && eventData.content !== null) {
-                                    // 直接添加新內容，不觸發完整重新渲染
-                                    gptMessage.text += eventData.content;
+                                    // 直接修改響應式數組中的對象，Vue 會檢測到變化
+                                    messages[messageIndex].text += eventData.content;
                                     // 不在每次流式更新時調用 triggerUpdate，讓 Vue 自然響應
                                 }
 
                                 // 處理完成
                                 if (eventData.done) {
-                                    gptMessage.isStreaming = false;
+                                    messages[messageIndex].isStreaming = false;
                                     // 只在完成時觸發一次更新
                                     triggerUpdate();
                                 }
@@ -139,14 +142,14 @@ const sendMessage = async () => {
             });
 
             loading.value = false;
-            gptMessage.isStreaming = false;
+            messages[messageIndex].isStreaming = false;
             abortController.value = null;
             triggerUpdate();
 
         } catch (error) {
             console.error('Message send failed', error);
             loading.value = false;
-            gptMessage.isStreaming = false;
+            messages[messageIndex].isStreaming = false;
             abortController.value = null;
 
             // 只有在不是取消錯誤時才顯示錯誤訊息
@@ -197,10 +200,16 @@ const cancelRequest = () => {
         loading.value = false;
 
         // 查找最後一個 GPT 消息並添加取消標記
-        const lastGptMessage = messages.slice().reverse().find(msg => msg.sender_type === 'gpt');
-        if (lastGptMessage && lastGptMessage.isStreaming) {
-            lastGptMessage.text += "\n\n*[請求已取消]*";
-            lastGptMessage.isStreaming = false;
+        let lastGptMessageIndex = -1;
+        for (let i = messages.length - 1; i >= 0; i--) {
+            if (messages[i].sender_type === 'gpt' && messages[i].isStreaming) {
+                lastGptMessageIndex = i;
+                break;
+            }
+        }
+        if (lastGptMessageIndex !== -1) {
+            messages[lastGptMessageIndex].text += "\n\n*[請求已取消]*";
+            messages[lastGptMessageIndex].isStreaming = false;
             triggerUpdate(true);
         }
     }
