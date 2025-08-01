@@ -1,6 +1,6 @@
 <script setup>
 import AppLayout from '@/Layouts/AppLayout.vue';
-import { ref, onMounted, computed, nextTick, watch, toRaw, reactive } from 'vue';
+import { ref, onMounted, onUnmounted, computed, nextTick, watch, toRaw, reactive } from 'vue';
 import axios from 'axios';
 import { route } from 'ziggy-js';
 import { marked } from 'marked';
@@ -10,7 +10,8 @@ const props = defineProps({
     user: Object,
 });
 
-const messages = reactive(props.messages || []);
+// 創建一個純淨的消息數組，避免序列化問題
+const messages = reactive([...(props.messages || [])]);
 const newMessage = ref('');
 const user = ref(props.user);
 const loading = ref(false);
@@ -55,7 +56,10 @@ const sendMessage = async () => {
         // 添加用戶消息
         const userMessage = {
             id: generateMessageId(),
-            user: user.value,
+            user: {
+                name: user.value?.name || 'User',
+                // 只保留必要的用戶資訊，避免序列化問題
+            },
             text: messageContent,
             created_at: userTimestamp,
             sender_type: 'user',
@@ -63,20 +67,23 @@ const sendMessage = async () => {
         messages.push(userMessage);
 
         // 創建 GPT 回應消息（初始為空）
-        const gptMessage = reactive({
+        const gptMessage = {
             id: generateMessageId(),
             user: { name: 'GPT' },
             text: '',
             created_at: gptTimestamp,
             sender_type: 'gpt',
             isStreaming: true,
-        });
+        };
         messages.push(gptMessage);
 
         // 觸發更新，確保新消息顯示在最上方
         triggerUpdate(true);
 
         loading.value = true;
+
+        // 創建新的 AbortController
+        abortController.value = new AbortController();
 
         // 用於追蹤已處理的響應長度
         let processedLength = 0;
@@ -88,6 +95,7 @@ const sendMessage = async () => {
                 url: route('chat.send-message-stream'),
                 data: { message: messageContent },
                 responseType: 'text',
+                signal: abortController.value.signal, // 添加取消信號
                 headers: {
                     'Accept': 'text/event-stream',
                     'Cache-Control': 'no-cache',
@@ -132,6 +140,7 @@ const sendMessage = async () => {
 
             loading.value = false;
             gptMessage.isStreaming = false;
+            abortController.value = null;
             triggerUpdate();
 
         } catch (error) {
@@ -139,7 +148,11 @@ const sendMessage = async () => {
             loading.value = false;
             gptMessage.isStreaming = false;
             abortController.value = null;
-            handleError(error);
+
+            // 只有在不是取消錯誤時才顯示錯誤訊息
+            if (!axios.isCancel(error)) {
+                handleError(error);
+            }
         }
     }
 };
@@ -163,13 +176,14 @@ const handleError = (error) => {
     }
 
     // 添加錯誤訊息
-    messages.push({
+    const errorMessage_obj = {
         id: generateMessageId(),
         user: { name: 'System' },
         text: errorMessage,
         created_at: new Date().toISOString(),
         sender_type: 'error',
-    });
+    };
+    messages.push(errorMessage_obj);
 
     triggerUpdate(true);
     error.value = errorMessage;
@@ -178,7 +192,7 @@ const handleError = (error) => {
 // 取消請求
 const cancelRequest = () => {
     if (abortController.value) {
-        abortController.value.cancel('Request cancelled by user');
+        abortController.value.abort('Request cancelled by user');
         abortController.value = null;
         loading.value = false;
 
@@ -222,6 +236,15 @@ onMounted(() => {
             messagesContainer.value.scrollTop = 0;
         }
     });
+});
+
+// 組件卸載時清理正在進行的請求
+onUnmounted(() => {
+    if (abortController.value) {
+        abortController.value.abort('Component unmounted');
+        abortController.value = null;
+    }
+    loading.value = false;
 });
 </script>
 
