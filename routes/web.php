@@ -26,6 +26,6 @@ Route::middleware([
     // GPT API message route
     Route::post('/chat/send-message', [ChatRoomController::class, 'sendMessage'])->name('chat.send-message');
 
-    // GPT API streaming message route
-    Route::get('/chat/send-message-stream', [ChatRoomController::class, 'sendMessageStream'])->name('chat.send-message-stream');
+    // GPT API streaming message route - 修改為 POST 請求
+    Route::post('/chat/send-message-stream', [ChatRoomController::class, 'sendMessageStream'])->name('chat.send-message-stream');
 });

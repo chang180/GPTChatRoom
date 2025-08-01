@@ -25,6 +25,9 @@ GPT Chat Room 是一個現代化的即時聊天應用程式，讓使用者可以
 - 🎨 **現代化 UI**: 使用 Tailwind CSS 打造美觀介面
 - ⚡ **SPA 體驗**: Inertia.js 提供單頁應用程式體驗
 - 🔄 **反向訊息排序**: 最新訊息顯示在頂部，無需手動滾動
+- 📊 **流式回應**: AI 回應即時流式顯示，無需等待完整回應
+- 🛡️ **錯誤處理**: 完善的錯誤處理機制，提供清晰的錯誤訊息
+- 🚫 **請求取消**: 支援取消正在進行的 AI 請求
 
 ## 🛠️ 技術堆疊
 
@@ -34,6 +37,7 @@ GPT Chat Room 是一個現代化的即時聊天應用程式，讓使用者可以
 - **Laravel Sanctum** - API 認證
 - **SQLite** - 資料庫
 - **OpenAI PHP SDK** - AI 服務整合
+- **Server-Sent Events** - 流式資料傳輸
 
 ### 前端
 - **Vue.js 3.3** - 前端框架
@@ -41,6 +45,7 @@ GPT Chat Room 是一個現代化的即時聊天應用程式，讓使用者可以
 - **Tailwind CSS 3.4** - CSS 框架
 - **Vite 6.2** - 建構工具
 - **Marked.js** - Markdown 渲染
+- **Fetch API** - 流式數據處理
 
 ### 開發工具
 - **Laravel Nightwatch** - 監控與日誌
@@ -61,160 +66,3 @@ GPT Chat Room 是一個現代化的即時聊天應用程式，讓使用者可以
 git clone https://github.com/chang180/GPTChatRoom.git
 cd GPTChatRoom
 ```
-
-### 2. 安裝後端依賴
-```bash
-composer install
-```
-
-### 3. 安裝前端依賴
-```bash
-npm install
-```
-
-### 4. 環境設定
-```bash
-cp .env.example .env
-php artisan key:generate
-```
-
-### 5. 配置 OpenAI API
-在 `.env` 檔案中設定您的 OpenAI API 金鑰：
-```env
-OPENAI_API_KEY=your_openai_api_key_here
-OPENAI_ORGANIZATION=your_organization_id_here
-```
-
-### 6. 資料庫設定
-```bash
-php artisan migrate
-```
-
-### 7. 建構前端資源
-```bash
-npm run build
-# 或開發模式
-npm run dev
-```
-
-### 8. 啟動應用程式
-```bash
-php artisan serve
-```
-
-## 📱 使用方式
-
-1. **註冊帳號** - 前往註冊頁面建立新帳號
-2. **登入系統** - 使用您的帳號登入
-3. **開始聊天** - 點擊導航列的 "ChatRoom" 開始與 GPT 對話
-4. **享受對話** - 輸入訊息並享受 AI 助手的智能回應
-
-## 🏗️ 專案架構
-
-```
-GPTChatRoom/
-├── app/
-│   ├── Http/Controllers/
-│   │   ├── ChatRoomController.php    # 聊天室控制器
-│   │   └── HomeController.php        # 首頁控制器
-│   ├── Models/
-│   │   ├── User.php                  # 使用者模型
-│   │   └── Message.php               # 訊息模型
-│   └── Services/
-│       └── GPTService.php            # GPT API 服務
-├── resources/
-│   ├── js/Pages/
-│   │   ├── ChatRoom.vue              # 聊天室頁面
-│   │   └── Dashboard.vue             # 儀表板
-│   └── css/
-│       └── app.css                   # 主要樣式
-├── database/
-│   ├── migrations/                   # 資料庫遷移檔案
-│   └── database.sqlite               # SQLite 資料庫
-└── routes/
-    └── web.php                       # 網頁路由
-```
-
-## 🎯 主要功能
-
-### 聊天系統
-- 與 GPT-4o-mini 進行對話
-- 支援 Markdown 格式回應
-- 自動儲存聊天歷史
-- 即時載入狀態提示
-
-### 使用者管理
-- 使用者註冊與登入
-- 雙因子認證（2FA）
-- 個人資料管理
-- 安全的 Session 管理
-
-### 介面特色
-- 全螢幕聊天體驗
-- 響應式設計
-- 現代化 UI/UX
-- 快速載入與流暢動畫
-- 反向訊息排序，最新訊息顯示在頂部
-
-## 🔧 開發指南
-
-### 本地開發
-```bash
-# 啟動後端伺服器
-php artisan serve
-
-# 啟動前端建構（開發模式）
-npm run dev
-```
-
-### 測試
-```bash
-# 執行測試
-php artisan test
-```
-
-### 程式碼格式化
-```bash
-# 格式化 PHP 程式碼
-./vendor/bin/pint
-```
-
-## 📝 最近更新
-
-### 2025-08-01: 聊天界面優化
-- 重新設計聊天界面，將輸入框移至頂部
-- 實現訊息反向排序，最新訊息顯示在頂部
-- 解決頁面導航後訊息不自動滾動的問題
-- 提升整體用戶體驗，無需手動滾動即可查看最新訊息
-
-## 🤝 貢獻
-
-歡迎貢獻！請先 fork 此專案，建立您的功能分支，並提交 Pull Request。
-
-1. Fork 專案
-2. 建立功能分支 (`git checkout -b feature/AmazingFeature`)
-3. 提交變更 (`git commit -m 'Add some AmazingFeature'`)
-4. 推送到分支 (`git push origin feature/AmazingFeature`)
-5. 開啟 Pull Request
-
-## 📄 授權條款
-
-本專案採用 MIT 授權條款。詳細資訊請參閱 [LICENSE](LICENSE) 檔案。
-
-## 📞 聯絡資訊
-
-- 專案連結: [https://github.com/chang180/GPTChatRoom](https://github.com/chang180/GPTChatRoom)
-- 問題回報: [GitHub Issues](https://github.com/chang180/GPTChatRoom/issues)
-
-## 🙏 致謝
-
-- [Laravel](https://laravel.com) - 強大的 PHP 框架
-- [Vue.js](https://vuejs.org) - 漸進式 JavaScript 框架
-- [OpenAI](https://openai.com) - AI 技術支援
-- [Tailwind CSS](https://tailwindcss.com) - 實用優先的 CSS 框架
-
----
-
-<p align="center">
-    Made with ❤️ by <a href="https://github.com/chang180">chang180</a>
-</p>

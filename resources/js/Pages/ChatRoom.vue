@@ -1,6 +1,6 @@
 <script setup>
 import AppLayout from '@/Layouts/AppLayout.vue';
-import { ref, onMounted, computed, nextTick } from 'vue';
+import { ref, onMounted, computed, nextTick, watch, toRaw, reactive } from 'vue';
 import axios from 'axios';
 import { route } from 'ziggy-js';
 import { marked } from 'marked';
@@ -10,79 +10,135 @@ const props = defineProps({
     user: Object,
 });
 
-const messages = ref(props.messages || []);
+const messages = reactive(props.messages || []);
 const newMessage = ref('');
 const user = ref(props.user);
 const loading = ref(false);
-const error = ref(null); // 新增錯誤狀態
-const streamingMessage = ref(null); // 用於存儲正在流式接收的消息
+const error = ref(null);
+const abortController = ref(null);
+const messagesContainer = ref(null);
+
+// 使用一個簡單的響應式變數來追蹤更新
+const updateCounter = ref(0);
+const messageIdCounter = ref(0);
+
+// 生成唯一的消息 ID
+const generateMessageId = () => {
+    return `msg_${Date.now()}_${++messageIdCounter.value}`;
+};
+
+// 強制觸發響應式更新（減少不必要的更新）
+const triggerUpdate = (forceScroll = false) => {
+    updateCounter.value++;
+    if (forceScroll) {
+        nextTick(() => {
+            if (messagesContainer.value) {
+                messagesContainer.value.scrollTop = 0;
+            }
+        });
+    }
+};
 
 const sendMessage = async () => {
     if (newMessage.value.trim() !== '') {
         const messageContent = newMessage.value;
         newMessage.value = '';
-        error.value = null; // 重置錯誤狀態
+        error.value = null;
 
-        messages.value.push({
+        // 獲取當前時間戳
+        const now = new Date();
+        const userTimestamp = now.toISOString();
+
+        // GPT 消息時間戳稍微晚一點，確保它在排序中位於最上方
+        const gptTimestamp = new Date(now.getTime() + 1).toISOString();
+
+        // 添加用戶消息
+        const userMessage = {
+            id: generateMessageId(),
             user: user.value,
             text: messageContent,
-            created_at: new Date().toISOString(),
+            created_at: userTimestamp,
             sender_type: 'user',
+        };
+        messages.push(userMessage);
+
+        // 創建 GPT 回應消息（初始為空）
+        const gptMessage = reactive({
+            id: generateMessageId(),
+            user: { name: 'GPT' },
+            text: '',
+            created_at: gptTimestamp,
+            sender_type: 'gpt',
+            isStreaming: true,
         });
+        messages.push(gptMessage);
+
+        // 觸發更新，確保新消息顯示在最上方
+        triggerUpdate(true);
 
         loading.value = true;
 
+        // 用於追蹤已處理的響應長度
+        let processedLength = 0;
+
         try {
-            // 創建一個空的流式消息
-            streamingMessage.value = {
-                user: { name: 'GPT' },
-                text: '', // 初始為空，將逐漸填充
-                created_at: new Date().toISOString(),
-                sender_type: 'gpt',
-                isStreaming: true, // 標記為正在流式接收
-            };
+            // 使用 axios 進行流式請求處理
+            const response = await axios({
+                method: 'POST',
+                url: route('chat.send-message-stream'),
+                data: { message: messageContent },
+                responseType: 'text',
+                headers: {
+                    'Accept': 'text/event-stream',
+                    'Cache-Control': 'no-cache',
+                },
+                onDownloadProgress: (progressEvent) => {
+                    const xhr = progressEvent.event.target;
+                    const responseText = xhr.responseText || '';
 
-            // 將流式消息添加到消息列表
-            messages.value.push(streamingMessage.value);
+                    // 只處理新的數據部分
+                    const newData = responseText.substring(processedLength);
+                    processedLength = responseText.length;
 
-            // 使用 EventSource 接收流式數據
-            const eventSource = new EventSource(route('chat.send-message-stream') + '?message=' + encodeURIComponent(messageContent));
+                    // 處理新的 SSE 數據
+                    const lines = newData.split('\n');
 
-            eventSource.onmessage = (event) => {
-                const data = JSON.parse(event.data);
+                    for (const line of lines) {
+                        if (line.trim() && line.startsWith('data: ')) {
+                            try {
+                                const jsonStr = line.substring(6).trim();
+                                const eventData = JSON.parse(jsonStr);
 
-                // 處理消息 ID
-                if (data.messageId) {
-                    // 可以保存消息 ID 以備後用
-                    console.log('Message ID:', data.messageId);
+                                // 處理內容
+                                if ('content' in eventData && eventData.content !== null) {
+                                    // 直接添加新內容，不觸發完整重新渲染
+                                    gptMessage.text += eventData.content;
+                                    // 不在每次流式更新時調用 triggerUpdate，讓 Vue 自然響應
+                                }
+
+                                // 處理完成
+                                if (eventData.done) {
+                                    gptMessage.isStreaming = false;
+                                    // 只在完成時觸發一次更新
+                                    triggerUpdate();
+                                }
+                            } catch (e) {
+                                console.error('Error parsing SSE data:', e, line);
+                            }
+                        }
+                    }
                 }
+            });
 
-                // 處理內容片段
-                if (data.content) {
-                    streamingMessage.value.text += data.content;
-                }
-
-                // 處理完成信號
-                if (data.done) {
-                    eventSource.close();
             loading.value = false;
-                    streamingMessage.value.isStreaming = false; // 標記流式接收完成
-                }
-};
-
-            eventSource.onerror = (error) => {
-                console.error('EventSource error:', error);
-                eventSource.close();
-                loading.value = false;
-                streamingMessage.value.isStreaming = false;
-
-                // 處理錯誤
-                handleError(new Error('流式連接錯誤，請稍後再試。'));
-};
+            gptMessage.isStreaming = false;
+            triggerUpdate();
 
         } catch (error) {
             console.error('Message send failed', error);
             loading.value = false;
+            gptMessage.isStreaming = false;
+            abortController.value = null;
             handleError(error);
         }
     }
@@ -90,11 +146,9 @@ const sendMessage = async () => {
 
 // 處理錯誤的函數
 const handleError = (error) => {
-    // 添加錯誤處理
     let errorMessage = '發送訊息失敗，請稍後再試。';
 
     if (error.response) {
-        // 服務器回應了錯誤
         if (error.response.status === 429) {
             errorMessage = 'API 請求頻率過高，請稍後再試。';
         } else if (error.response.data && error.response.data.message) {
@@ -103,24 +157,46 @@ const handleError = (error) => {
             errorMessage = `伺服器錯誤 (${error.response.status})，請稍後再試。`;
         }
     } else if (error.request) {
-        // 請求已發送但沒有收到回應
         errorMessage = '無法連接到伺服器，請檢查您的網絡連接。';
+    } else if (error.message) {
+        errorMessage = `錯誤: ${error.message}`;
     }
 
-    // 將錯誤訊息添加到對話中
-    messages.value.push({
+    // 添加錯誤訊息
+    messages.push({
+        id: generateMessageId(),
         user: { name: 'System' },
         text: errorMessage,
         created_at: new Date().toISOString(),
         sender_type: 'error',
     });
 
+    triggerUpdate(true);
     error.value = errorMessage;
+};
+
+// 取消請求
+const cancelRequest = () => {
+    if (abortController.value) {
+        abortController.value.cancel('Request cancelled by user');
+        abortController.value = null;
+        loading.value = false;
+
+        // 查找最後一個 GPT 消息並添加取消標記
+        const lastGptMessage = messages.slice().reverse().find(msg => msg.sender_type === 'gpt');
+        if (lastGptMessage && lastGptMessage.isStreaming) {
+            lastGptMessage.text += "\n\n*[請求已取消]*";
+            lastGptMessage.isStreaming = false;
+            triggerUpdate(true);
+        }
+    }
 };
 
 const sortedMessages = computed(() => {
     // 反向排序，最新的消息在前面
-    return messages.value.slice().sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    // 只在 updateCounter 改變時重新計算，避免流式更新時的頻繁重新排序
+    updateCounter.value; // 這會觸發重新計算
+    return [...messages].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 });
 
 const formatDate = (dateString) => {
@@ -138,6 +214,15 @@ const formatDate = (dateString) => {
 const clearError = () => {
     error.value = null;
 };
+
+// 組件掛載時確保滾動位置正確
+onMounted(() => {
+    nextTick(() => {
+        if (messagesContainer.value) {
+            messagesContainer.value.scrollTop = 0;
+        }
+    });
+});
 </script>
 
 <template>
@@ -146,8 +231,15 @@ const clearError = () => {
         <div class="h-screen flex flex-col pt-16">
             <div class="flex-1 flex flex-col bg-white">
                 <!-- 聊天室標題 -->
-                <div class="bg-blue-600 text-white p-4">
+                <div class="bg-blue-600 text-white p-4 flex justify-between items-center">
                     <h1 class="text-xl font-semibold">GPT Chat Room</h1>
+                    <button
+                        v-if="loading"
+                        @click="cancelRequest"
+                        class="px-3 py-1 bg-red-500 hover:bg-red-600 text-white text-sm rounded-md"
+                    >
+                        取消請求
+                    </button>
                 </div>
 
                 <!-- 聊天室容器 -->
@@ -184,8 +276,8 @@ const clearError = () => {
                     </div>
 
                     <!-- 訊息區域 - 反向排列 -->
-                    <div id="messages" class="flex-1 p-4 overflow-y-auto bg-gray-50 min-h-0">
-                        <div v-for="(message, index) in sortedMessages" :key="index" class="mb-3">
+                    <div id="messages" ref="messagesContainer" class="flex-1 p-4 overflow-y-auto bg-gray-50 min-h-0">
+                        <div v-for="(message, index) in sortedMessages" :key="message.id || `fallback-${index}`" class="mb-3">
                             <div :class="{
                                 'bg-blue-100 p-3 rounded-lg': message.sender_type === 'gpt',
                                 'bg-white p-3 rounded-lg border': message.sender_type === 'user',
@@ -227,20 +319,21 @@ const clearError = () => {
                                              :class="{
                                                  'text-gray-700': message.sender_type !== 'error',
                                                  'text-red-600': message.sender_type === 'error'
-                                             }"
-                                             v-html="message.sender_type === 'gpt' ? marked.parse(message.text) : message.text">
+                                             }">
+                                            <div v-if="message.sender_type === 'gpt'" v-html="marked.parse(message.text || '')"></div>
+                                            <div v-else>{{ message.text }}</div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-        </div>
-            </div>
-        </div>
 
         <!-- 載入遮罩 (只在初始加載時顯示) -->
-        <div v-if="loading && !streamingMessage" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-800 bg-opacity-50">
+        <div v-if="loading && messages.filter(m => m.sender_type === 'gpt' && m.isStreaming).length === 0" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-800 bg-opacity-50">
             <div class="loader"></div>
         </div>
     </AppLayout>
