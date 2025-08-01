@@ -149,14 +149,12 @@ class ChatRoomController extends Controller
 
                 // 發送完成信號
                 echo "data: " . json_encode(['done' => true, 'messageId' => $gptMessage->id]) . "\n\n";
-
             }, 200, [
                 'Cache-Control' => 'no-cache',
                 'Content-Type' => 'text/event-stream',
                 'X-Accel-Buffering' => 'no',
                 'Connection' => 'keep-alive',
             ]);
-
         } catch (\Exception $e) {
             Log::error('Stream error', ['error' => $e->getMessage()]);
             $errorMessage = $e->getMessage();
