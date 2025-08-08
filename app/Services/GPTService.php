@@ -49,7 +49,7 @@ class GPTService
 
         try {
             $stream = OpenAI::chat()->createStreamed([
-                'model' => 'gpt-4.1-nano',
+                'model' => 'gpt-5-nano',
                 'messages' => [
                     ['role' => 'user', 'content' => $message]
                 ],
