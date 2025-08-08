@@ -7,17 +7,17 @@
 <p align="center">
     <img src="https://img.shields.io/badge/Laravel-12.0-red?style=flat-square&logo=laravel" alt="Laravel Version">
     <img src="https://img.shields.io/badge/Vue.js-3.3-green?style=flat-square&logo=vue.js" alt="Vue.js Version">
-    <img src="https://img.shields.io/badge/OpenAI-GPT--4.1--nano-blue?style=flat-square&logo=openai" alt="OpenAI GPT">
+    <img src="https://img.shields.io/badge/OpenAI-GPT--5--nano-blue?style=flat-square&logo=openai" alt="OpenAI GPT">
     <img src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square" alt="License">
 </p>
 
 ## 📖 關於專案
 
-GPT Chat Room 是一個現代化的即時聊天應用程式，讓使用者可以與 OpenAI 的 GPT-4.1-nano 模型進行對話。本專案採用 Laravel + Vue.js + Inertia.js 的全端解決方案，提供流暢、響應式的聊天體驗。
+GPT Chat Room 是一個現代化的即時聊天應用程式，讓使用者可以與 OpenAI 的 GPT 模型進行對話。本專案採用 Laravel + Vue.js + Inertia.js 的全端解決方案，提供流暢、響應式的聊天體驗。
 
 ### ✨ 主要特色
 
-- 🤖 **AI 聊天**: 與 OpenAI GPT-4.1-nano 進行智能對話
+- 🤖 **AI 聊天**: 與 OpenAI GPT-5-nano 進行智能對話
 - 💬 **即時聊天**: 流暢的對話體驗，支援 Markdown 格式回應
 - 🔐 **完整認證**: Laravel Jetstream 提供使用者註冊、登入、雙因子認證
 - 📱 **響應式設計**: 適配桌面和行動裝置
