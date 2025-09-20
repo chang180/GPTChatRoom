@@ -85,11 +85,23 @@ class ChatRoomController extends Controller
         // 驗證請求數據
         $data = $request->validate([
             'message' => 'required|string',
+            'theme' => 'nullable|string',
         ]);
+
+        $user = Auth::user();
+        
+        // 獲取指定的聊天室，優先從請求數據中獲取，然後從路由參數
+        $theme = $data['theme'] ?? $request->route('theme') ?? $request->get('theme', 'work');
+        $chatRoom = ChatRoom::getGlobalTheme($theme);
+        
+        if (!$chatRoom) {
+            $chatRoom = ChatRoom::getGlobalTheme('work');
+        }
 
         // 創建新消息，設置 sender_type 為 'user'
         $message = Message::create([
             'user_id' => Auth::id(),
+            'chat_room_id' => $chatRoom->id,
             'text' => $data['message'],
             'sender_type' => 'user',
         ]);
@@ -99,12 +111,13 @@ class ChatRoomController extends Controller
             $gptMessageContent = $gptResponse['choices'][0]['message']['content'];
             $gptMessage = Message::create([
                 'user_id' => Auth::id(),
+                'chat_room_id' => $chatRoom->id,
                 'text' => $gptMessageContent,
                 'sender_type' => 'gpt',
             ]);
 
             // 清除快取，因為有新訊息
-            $this->messageCacheService->invalidateCacheOnNewMessage();
+            $this->messageCacheService->invalidateCacheOnNewMessage($chatRoom->id);
 
             return response()->json([
                 'message' => $message,
@@ -114,12 +127,13 @@ class ChatRoomController extends Controller
             $errorMessage = $e->getMessage();
             Message::create([
                 'user_id' => Auth::id(),
+                'chat_room_id' => $chatRoom->id,
                 'text' => $errorMessage,
                 'sender_type' => 'gpt', // 假設錯誤消息也來自 GPT
             ]);
 
             // 清除快取，因為有新訊息（即使是錯誤訊息）
-            $this->messageCacheService->invalidateCacheOnNewMessage();
+            $this->messageCacheService->invalidateCacheOnNewMessage($chatRoom->id);
 
             return response()->json(['error' => $errorMessage], 500);
         }
@@ -191,6 +205,9 @@ class ChatRoomController extends Controller
                     'sender_type' => 'gpt',
                 ]);
 
+                // 清除快取，因為有新訊息
+                $this->messageCacheService->invalidateCacheOnNewMessage($chatRoom->id);
+
                 // 發送完成信號
                 echo "data: " . json_encode(['done' => true, 'messageId' => $gptMessage->id]) . "\n\n";
             }, 200, [
@@ -209,6 +226,9 @@ class ChatRoomController extends Controller
                 'text' => $errorMessage,
                 'sender_type' => 'error',
             ]);
+
+            // 清除快取，因為有新訊息（即使是錯誤訊息）
+            $this->messageCacheService->invalidateCacheOnNewMessage($chatRoom->id);
 
             return response()->json(['error' => $errorMessage], 500);
         }

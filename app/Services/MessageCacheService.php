@@ -82,10 +82,10 @@ class MessageCacheService
     /**
      * 當有新訊息時清除相關快取
      */
-    public function invalidateCacheOnNewMessage(): void
+    public function invalidateCacheOnNewMessage(?int $chatRoomId = null): void
     {
         // 清除第一頁快取（因為新訊息會出現在第一頁）
-        $this->clearPageCache(1);
+        $this->clearPageCache(1, 30, $chatRoomId);
         
         // 也可以選擇清除所有快取，但這會影響效能
         // $this->clearAllCache();
