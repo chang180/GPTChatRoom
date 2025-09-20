@@ -4,11 +4,14 @@ import { ref, onMounted, onUnmounted, computed, nextTick, watch, toRaw, reactive
 import axios from 'axios';
 import { route } from 'ziggy-js';
 import { marked } from 'marked';
+import { router } from '@inertiajs/vue3';
 
 const props = defineProps({
     messages: Array,
     pagination: Object,
     user: Object,
+    currentChatRoom: Object,
+    themes: Array,
 });
 
 // 創建一個純淨的消息數組，避免序列化問題
@@ -20,6 +23,10 @@ const loading = ref(false);
 const loadingMore = ref(false);
 const error = ref(null);
 const abortController = ref(null);
+
+// 主題聊天室相關
+const currentChatRoom = ref(props.currentChatRoom);
+const themes = ref(props.themes || []);
 const messagesContainer = ref(null);
 
 // 新增的功能變數
@@ -337,6 +344,23 @@ const clearAllMessages = async () => {
     }
 };
 
+// 切換主題聊天室
+const switchTheme = async (themeSlug) => {
+    try {
+        loading.value = true;
+        
+        // 使用 Inertia 導航到新的主題聊天室
+        await router.visit(route('chat.theme', { theme: themeSlug }), {
+            preserveState: false,
+            preserveScroll: false,
+        });
+    } catch (error) {
+        console.error('切換主題失敗:', error);
+    } finally {
+        loading.value = false;
+    }
+};
+
 // 更改每頁訊息數量
 const changeMessagesPerPage = async () => {
     try {
@@ -389,6 +413,31 @@ onUnmounted(() => {
         <!-- 聊天室主容器 - 佔滿可用空間，移除頂部間距 -->
         <div class="h-screen flex flex-col">
             <div class="flex-1 flex flex-col bg-white dark:bg-gray-900">
+                <!-- 主題頁籤區域 -->
+                <div class="bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+                    <div class="flex">
+                        <button
+                            v-for="theme in themes"
+                            :key="theme.id"
+                            @click="switchTheme(theme.slug)"
+                            :class="[
+                                'px-6 py-3 text-sm font-medium border-b-2 transition-colors duration-200',
+                                currentChatRoom && currentChatRoom.slug === theme.slug
+                                    ? 'text-blue-600 dark:text-blue-400 border-blue-600 dark:border-blue-400 bg-white dark:bg-gray-900'
+                                    : 'text-gray-600 dark:text-gray-400 border-transparent hover:text-gray-800 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'
+                            ]"
+                        >
+                            <i :class="{
+                                'fas fa-briefcase': theme.slug === 'work',
+                                'fas fa-graduation-cap': theme.slug === 'study',
+                                'fas fa-lightbulb': theme.slug === 'creative',
+                                'fas fa-comments': theme.slug === 'daily'
+                            }" class="mr-2"></i>
+                            {{ theme.name }}
+                        </button>
+                    </div>
+                </div>
+
                 <!-- 控制區域 -->
                 <div class="bg-blue-600 dark:bg-blue-700 text-white p-4 flex justify-between items-center shadow-lg">
                     <div class="flex items-center space-x-4">

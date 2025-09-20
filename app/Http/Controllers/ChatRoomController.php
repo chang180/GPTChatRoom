@@ -22,7 +22,7 @@ class ChatRoomController extends Controller
         $this->messageCacheService = $messageCacheService;
     }
 
-    public function index()
+    public function index(Request $request)
     {
         // 確保用戶已認證
         if (!Auth::check()) {
@@ -30,7 +30,18 @@ class ChatRoomController extends Controller
         }
 
         $user = Auth::user();
-        $chatRoom = ChatRoom::getDefaultForUser($user);
+        
+        // 獲取指定的聊天室，默認為第一個主題聊天室
+        $theme = $request->get('theme', 'work');
+        $chatRoom = ChatRoom::getGlobalTheme($theme);
+        
+        // 如果指定的主題不存在，使用工作聊天室
+        if (!$chatRoom) {
+            $chatRoom = ChatRoom::getGlobalTheme('work');
+        }
+
+        // 獲取所有主題聊天室列表
+        $themes = ChatRoom::getGlobalThemes();
 
         // 使用快取服務載入訊息，提高效能
         $cachedData = $this->messageCacheService->getCachedMessages(1, 30, $chatRoom->id);
@@ -39,7 +50,8 @@ class ChatRoomController extends Controller
             'messages' => $cachedData['messages'],
             'pagination' => $cachedData['pagination'],
             'user' => $user,
-            'chatRoom' => $chatRoom,
+            'currentChatRoom' => $chatRoom,
+            'themes' => $themes,
         ]);
     }
 
@@ -132,7 +144,14 @@ class ChatRoomController extends Controller
         ]);
 
         $user = Auth::user();
-        $chatRoom = ChatRoom::getDefaultForUser($user);
+        
+        // 獲取指定的聊天室，默認為工作聊天室
+        $theme = $request->get('theme', 'work');
+        $chatRoom = ChatRoom::getGlobalTheme($theme);
+        
+        if (!$chatRoom) {
+            $chatRoom = ChatRoom::getGlobalTheme('work');
+        }
 
         // 創建新消息，設置 sender_type 為 'user'
         $message = Message::create([
@@ -205,7 +224,17 @@ class ChatRoomController extends Controller
         }
 
         $user = Auth::user();
-        $chatRoom = ChatRoom::getDefaultForUser($user);
+        
+        // 獲取指定的聊天室
+        $theme = $request->get('theme', 'work');
+        $chatRoom = ChatRoom::getGlobalTheme($theme);
+        
+        if (!$chatRoom) {
+            return response()->json([
+                'success' => false,
+                'message' => '聊天室不存在',
+            ], 404);
+        }
 
         try {
             // 刪除該聊天室的所有訊息
