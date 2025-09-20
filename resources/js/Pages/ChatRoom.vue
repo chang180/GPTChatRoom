@@ -182,12 +182,18 @@ const sendMessage = async () => {
                                 if ('content' in eventData && eventData.content !== null) {
                                     // 直接修改響應式數組中的對象，Vue 會檢測到變化
                                     messages[messageIndex].text += eventData.content;
+                                    
+                                    // 第一次收到內容時，停止 loading 狀態
+                                    if (loading.value) {
+                                        loading.value = false;
+                                    }
                                     // 不在每次流式更新時調用 triggerUpdate，讓 Vue 自然響應
                                 }
 
                                 // 處理完成
                                 if (eventData.done) {
                                     messages[messageIndex].isStreaming = false;
+                                    loading.value = false;
                                     // 只在完成時觸發一次更新
                                     triggerUpdate();
                                 }
