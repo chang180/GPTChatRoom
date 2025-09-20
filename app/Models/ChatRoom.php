@@ -44,4 +44,32 @@ class ChatRoom extends Model
             ]
         );
     }
+
+    /**
+     * Get all global theme chat rooms
+     */
+    public static function getGlobalThemes(): array
+    {
+        return static::whereIn('slug', ['work', 'study', 'creative', 'daily'])
+            ->orderByRaw("CASE slug WHEN 'work' THEN 1 WHEN 'study' THEN 2 WHEN 'creative' THEN 3 WHEN 'daily' THEN 4 END")
+            ->get()
+            ->toArray();
+    }
+
+    /**
+     * Get a specific global theme chat room
+     */
+    public static function getGlobalTheme(string $slug): ?self
+    {
+        return static::where('slug', $slug)
+            ->first();
+    }
+
+    /**
+     * Check if a chat room is a global theme
+     */
+    public function isGlobalTheme(): bool
+    {
+        return in_array($this->slug, ['work', 'study', 'creative', 'daily']);
+    }
 }

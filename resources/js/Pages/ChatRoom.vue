@@ -4,11 +4,14 @@ import { ref, onMounted, onUnmounted, computed, nextTick, watch, toRaw, reactive
 import axios from 'axios';
 import { route } from 'ziggy-js';
 import { marked } from 'marked';
+import { router } from '@inertiajs/vue3';
 
 const props = defineProps({
     messages: Array,
     pagination: Object,
     user: Object,
+    currentChatRoom: Object,
+    themes: Array,
 });
 
 // 創建一個純淨的消息數組，避免序列化問題
@@ -20,7 +23,25 @@ const loading = ref(false);
 const loadingMore = ref(false);
 const error = ref(null);
 const abortController = ref(null);
+
+// 主題聊天室相關
+const currentChatRoom = ref(props.currentChatRoom);
+const themes = ref(props.themes || []);
 const messagesContainer = ref(null);
+
+// 監聽 props 變化，更新響應式變數
+watch(() => props.currentChatRoom, (newChatRoom) => {
+    currentChatRoom.value = newChatRoom;
+});
+
+watch(() => props.themes, (newThemes) => {
+    themes.value = newThemes || [];
+});
+
+// 計算屬性：判斷是否為當前活躍的主題
+const isActiveTheme = (themeSlug) => {
+    return currentChatRoom.value && currentChatRoom.value.slug === themeSlug;
+};
 
 // 新增的功能變數
 const messageType = ref('ai'); // 'ai' 或 'direct'
@@ -118,8 +139,19 @@ const sendMessage = async () => {
         // 觸發更新，確保新消息顯示在最上方
         triggerUpdate(true);
 
-        // 如果是直接發送模式，不需要 AI 回應
+        // 如果是直接發送模式，需要保存到數據庫但不需要 AI 回應
         if (messageType.value === 'direct') {
+            // 發送直接訊息到後端保存
+            try {
+                await axios.post(route('chat.send-message'), {
+                    message: messageContent,
+                    theme: currentChatRoom.value?.slug || 'work',
+                    message_type: 'direct'
+                });
+            } catch (error) {
+                console.error('Failed to save direct message:', error);
+                // 如果保存失敗，可以選擇移除前端顯示的訊息或顯示錯誤
+            }
             return;
         }
 
@@ -154,7 +186,10 @@ const sendMessage = async () => {
             const response = await axios({
                 method: 'POST',
                 url: route('chat.send-message-stream'),
-                data: { message: messageContent },
+                data: { 
+                    message: messageContent,
+                    theme: currentChatRoom.value?.slug || 'work'
+                },
                 responseType: 'text',
                 signal: abortController.value.signal, // 添加取消信號
                 headers: {
@@ -304,12 +339,17 @@ const clearError = () => {
 
 // 清除所有聊天記錄
 const clearAllMessages = async () => {
-    if (confirm('確定要清除所有聊天記錄嗎？此操作無法復原。')) {
+    const roomName = currentChatRoom.value?.name || '當前聊天室';
+    if (confirm(`確定要清除「${roomName}」的所有聊天記錄嗎？此操作無法復原。`)) {
         try {
             loading.value = true;
             
             // 調用 API 清除服務器端的記錄
-            const response = await axios.delete(route('chat.clear'));
+            const response = await axios.delete(route('chat.clear'), {
+                data: {
+                    theme: currentChatRoom.value?.slug || 'work'
+                }
+            });
             
             if (response.data.success) {
                 // 清除客戶端的記錄
@@ -324,7 +364,7 @@ const clearAllMessages = async () => {
                 triggerUpdate(true);
                 
                 // 顯示成功訊息
-                console.log(`✅ ${response.data.message} (已刪除 ${response.data.deleted_count} 條記錄)`);
+                console.log(`✅ 「${roomName}」${response.data.message} (已刪除 ${response.data.deleted_count} 條記錄)`);
             } else {
                 throw new Error(response.data.message || '清除記錄失敗');
             }
@@ -334,6 +374,24 @@ const clearAllMessages = async () => {
         } finally {
             loading.value = false;
         }
+    }
+};
+
+// 切換主題聊天室
+const switchTheme = async (themeSlug) => {
+    try {
+        loading.value = true;
+        
+        // 使用 Inertia 導航到新的主題聊天室
+        await router.visit(route('chat.theme', { theme: themeSlug }), {
+            preserveState: false,
+            preserveScroll: false,
+            replace: true, // 使用 replace 而不是 push
+        });
+    } catch (error) {
+        console.error('切換主題失敗:', error);
+    } finally {
+        loading.value = false;
     }
 };
 
@@ -389,6 +447,31 @@ onUnmounted(() => {
         <!-- 聊天室主容器 - 佔滿可用空間，移除頂部間距 -->
         <div class="h-screen flex flex-col">
             <div class="flex-1 flex flex-col bg-white dark:bg-gray-900">
+                <!-- 主題頁籤區域 -->
+                <div class="bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+                    <div class="flex">
+                        <button
+                            v-for="theme in themes"
+                            :key="theme.id"
+                            @click="switchTheme(theme.slug)"
+                            :class="[
+                                'px-6 py-3 text-sm font-medium border-b-2 transition-colors duration-200',
+                                isActiveTheme(theme.slug)
+                                    ? 'text-blue-600 dark:text-blue-400 border-blue-600 dark:border-blue-400 bg-white dark:bg-gray-900'
+                                    : 'text-gray-600 dark:text-gray-400 border-transparent hover:text-gray-800 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'
+                            ]"
+                        >
+                            <i :class="{
+                                'fas fa-briefcase': theme.slug === 'work',
+                                'fas fa-graduation-cap': theme.slug === 'study',
+                                'fas fa-lightbulb': theme.slug === 'creative',
+                                'fas fa-comments': theme.slug === 'daily'
+                            }" class="mr-2"></i>
+                            {{ theme.name }}
+                        </button>
+                    </div>
+                </div>
+
                 <!-- 控制區域 -->
                 <div class="bg-blue-600 dark:bg-blue-700 text-white p-4 flex justify-between items-center shadow-lg">
                     <div class="flex items-center space-x-4">

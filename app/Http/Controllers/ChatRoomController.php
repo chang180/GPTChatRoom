@@ -22,7 +22,7 @@ class ChatRoomController extends Controller
         $this->messageCacheService = $messageCacheService;
     }
 
-    public function index()
+    public function index(Request $request)
     {
         // 確保用戶已認證
         if (!Auth::check()) {
@@ -30,7 +30,18 @@ class ChatRoomController extends Controller
         }
 
         $user = Auth::user();
-        $chatRoom = ChatRoom::getDefaultForUser($user);
+        
+        // 獲取指定的聊天室，默認為第一個主題聊天室
+        $theme = $request->route('theme') ?? $request->get('theme', 'work');
+        $chatRoom = ChatRoom::getGlobalTheme($theme);
+        
+        // 如果指定的主題不存在，使用工作聊天室
+        if (!$chatRoom) {
+            $chatRoom = ChatRoom::getGlobalTheme('work');
+        }
+
+        // 獲取所有主題聊天室列表
+        $themes = ChatRoom::getGlobalThemes();
 
         // 使用快取服務載入訊息，提高效能
         $cachedData = $this->messageCacheService->getCachedMessages(1, 30, $chatRoom->id);
@@ -39,7 +50,8 @@ class ChatRoomController extends Controller
             'messages' => $cachedData['messages'],
             'pagination' => $cachedData['pagination'],
             'user' => $user,
-            'chatRoom' => $chatRoom,
+            'currentChatRoom' => $chatRoom,
+            'themes' => $themes,
         ]);
     }
 
@@ -73,26 +85,53 @@ class ChatRoomController extends Controller
         // 驗證請求數據
         $data = $request->validate([
             'message' => 'required|string',
+            'theme' => 'nullable|string',
+            'message_type' => 'nullable|string|in:direct,ai_query',
         ]);
+
+        $user = Auth::user();
+        
+        // 獲取指定的聊天室，優先從請求數據中獲取，然後從路由參數
+        $theme = $data['theme'] ?? $request->route('theme') ?? $request->get('theme', 'work');
+        $chatRoom = ChatRoom::getGlobalTheme($theme);
+        
+        if (!$chatRoom) {
+            $chatRoom = ChatRoom::getGlobalTheme('work');
+        }
 
         // 創建新消息，設置 sender_type 為 'user'
         $message = Message::create([
             'user_id' => Auth::id(),
+            'chat_room_id' => $chatRoom->id,
             'text' => $data['message'],
             'sender_type' => 'user',
         ]);
 
+        // 清除快取，因為有新訊息
+        $this->messageCacheService->invalidateCacheOnNewMessage($chatRoom->id);
+
+        // 如果是直接發送模式，只保存用戶訊息，不發送給 GPT
+        $messageType = $data['message_type'] ?? 'ai_query';
+        if ($messageType === 'direct') {
+            return response()->json([
+                'message' => $message,
+                'success' => true,
+            ]);
+        }
+
+        // 如果是 AI 發問模式，發送給 GPT
         try {
             $gptResponse = $this->gptService->sendMessage($data['message']);
             $gptMessageContent = $gptResponse['choices'][0]['message']['content'];
             $gptMessage = Message::create([
                 'user_id' => Auth::id(),
+                'chat_room_id' => $chatRoom->id,
                 'text' => $gptMessageContent,
                 'sender_type' => 'gpt',
             ]);
 
-            // 清除快取，因為有新訊息
-            $this->messageCacheService->invalidateCacheOnNewMessage();
+            // 再次清除快取，因為有 GPT 回應
+            $this->messageCacheService->invalidateCacheOnNewMessage($chatRoom->id);
 
             return response()->json([
                 'message' => $message,
@@ -102,12 +141,13 @@ class ChatRoomController extends Controller
             $errorMessage = $e->getMessage();
             Message::create([
                 'user_id' => Auth::id(),
+                'chat_room_id' => $chatRoom->id,
                 'text' => $errorMessage,
                 'sender_type' => 'gpt', // 假設錯誤消息也來自 GPT
             ]);
 
             // 清除快取，因為有新訊息（即使是錯誤訊息）
-            $this->messageCacheService->invalidateCacheOnNewMessage();
+            $this->messageCacheService->invalidateCacheOnNewMessage($chatRoom->id);
 
             return response()->json(['error' => $errorMessage], 500);
         }
@@ -129,10 +169,18 @@ class ChatRoomController extends Controller
         // 驗證請求數據
         $data = $request->validate([
             'message' => 'required|string',
+            'theme' => 'nullable|string',
         ]);
 
         $user = Auth::user();
-        $chatRoom = ChatRoom::getDefaultForUser($user);
+        
+        // 獲取指定的聊天室，優先從請求數據中獲取，然後從路由參數
+        $theme = $data['theme'] ?? $request->route('theme') ?? $request->get('theme', 'work');
+        $chatRoom = ChatRoom::getGlobalTheme($theme);
+        
+        if (!$chatRoom) {
+            $chatRoom = ChatRoom::getGlobalTheme('work');
+        }
 
         // 創建新消息，設置 sender_type 為 'user'
         $message = Message::create([
@@ -171,6 +219,9 @@ class ChatRoomController extends Controller
                     'sender_type' => 'gpt',
                 ]);
 
+                // 清除快取，因為有新訊息
+                $this->messageCacheService->invalidateCacheOnNewMessage($chatRoom->id);
+
                 // 發送完成信號
                 echo "data: " . json_encode(['done' => true, 'messageId' => $gptMessage->id]) . "\n\n";
             }, 200, [
@@ -190,6 +241,9 @@ class ChatRoomController extends Controller
                 'sender_type' => 'error',
             ]);
 
+            // 清除快取，因為有新訊息（即使是錯誤訊息）
+            $this->messageCacheService->invalidateCacheOnNewMessage($chatRoom->id);
+
             return response()->json(['error' => $errorMessage], 500);
         }
     }
@@ -205,14 +259,24 @@ class ChatRoomController extends Controller
         }
 
         $user = Auth::user();
-        $chatRoom = ChatRoom::getDefaultForUser($user);
+        
+        // 獲取指定的聊天室，優先從請求數據中獲取
+        $theme = $request->input('theme', 'work');
+        $chatRoom = ChatRoom::getGlobalTheme($theme);
+        
+        if (!$chatRoom) {
+            return response()->json([
+                'success' => false,
+                'message' => '聊天室不存在',
+            ], 404);
+        }
 
         try {
             // 刪除該聊天室的所有訊息
             $deletedCount = Message::where('chat_room_id', $chatRoom->id)->delete();
 
             // 清除快取
-            $this->messageCacheService->invalidateCacheOnNewMessage();
+            $this->messageCacheService->invalidateCacheOnNewMessage($chatRoom->id);
 
             return response()->json([
                 'success' => true,
