@@ -141,12 +141,13 @@ class ChatRoomController extends Controller
         // 驗證請求數據
         $data = $request->validate([
             'message' => 'required|string',
+            'theme' => 'nullable|string',
         ]);
 
         $user = Auth::user();
         
-        // 獲取指定的聊天室，默認為工作聊天室
-        $theme = $request->route('theme') ?? $request->get('theme', 'work');
+        // 獲取指定的聊天室，優先從請求數據中獲取，然後從路由參數
+        $theme = $data['theme'] ?? $request->route('theme') ?? $request->get('theme', 'work');
         $chatRoom = ChatRoom::getGlobalTheme($theme);
         
         if (!$chatRoom) {

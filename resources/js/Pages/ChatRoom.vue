@@ -175,7 +175,10 @@ const sendMessage = async () => {
             const response = await axios({
                 method: 'POST',
                 url: route('chat.send-message-stream'),
-                data: { message: messageContent },
+                data: { 
+                    message: messageContent,
+                    theme: currentChatRoom.value?.slug || 'work'
+                },
                 responseType: 'text',
                 signal: abortController.value.signal, // 添加取消信號
                 headers: {
