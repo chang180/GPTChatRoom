@@ -276,7 +276,7 @@ class ChatRoomController extends Controller
             $deletedCount = Message::where('chat_room_id', $chatRoom->id)->delete();
 
             // 清除快取
-            $this->messageCacheService->invalidateCacheOnNewMessage();
+            $this->messageCacheService->invalidateCacheOnNewMessage($chatRoom->id);
 
             return response()->json([
                 'success' => true,

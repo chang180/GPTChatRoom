@@ -344,7 +344,11 @@ const clearAllMessages = async () => {
             loading.value = true;
             
             // 調用 API 清除服務器端的記錄
-            const response = await axios.delete(route('chat.clear'));
+            const response = await axios.delete(route('chat.clear'), {
+                data: {
+                    theme: currentChatRoom.value?.slug || 'work'
+                }
+            });
             
             if (response.data.success) {
                 // 清除客戶端的記錄
