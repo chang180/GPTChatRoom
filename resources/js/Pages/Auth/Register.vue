@@ -24,88 +24,155 @@ const submit = () => {
 </script>
 
 <template>
-    <Head title="Register" />
+    <Head title="註冊帳戶 - GPT Chat Room" />
 
     <AuthenticationCard>
         <template #logo>
             <AuthenticationCardLogo />
         </template>
 
-        <form @submit.prevent="submit">
-            <div>
-                <InputLabel for="name" value="Name" />
-                <TextInput
-                    id="name"
-                    v-model="form.name"
-                    type="text"
-                    class="mt-1 block w-full"
-                    required
-                    autofocus
-                    autocomplete="name"
-                />
+        <!-- 一般錯誤訊息 -->
+        <div v-if="form.errors.message || form.hasErrors" class="mb-4 p-4 bg-red-100 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+            <div class="flex items-center">
+                <i class="fas fa-exclamation-triangle text-red-600 dark:text-red-400 mr-2"></i>
+                <p class="text-sm font-medium text-red-800 dark:text-red-300">
+                    {{ form.errors.message || '註冊失敗，請檢查輸入的資訊是否正確' }}
+                </p>
+            </div>
+        </div>
+
+        <form @submit.prevent="submit" class="space-y-6">
+            <!-- 歡迎標題 -->
+            <div class="text-center mb-8">
+                <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-2">
+                    <i class="fas fa-user-plus mr-2 text-purple-600"></i>
+                    建立您的帳戶
+                </h2>
+                <p class="text-gray-600 dark:text-gray-300 text-sm">開始您的智能對話之旅</p>
+            </div>
+
+            <!-- 姓名輸入框 -->
+            <div class="relative">
+                <InputLabel for="name" value="姓名" class="text-gray-700 dark:text-gray-300 font-medium" />
+                <div class="relative mt-1">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i class="fas fa-user text-gray-400 dark:text-gray-500"></i>
+                    </div>
+                    <TextInput
+                        id="name"
+                        v-model="form.name"
+                        type="text"
+                        class="pl-10 block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-purple-500 focus:ring-purple-500 transition-colors"
+                        placeholder="請輸入您的姓名"
+                        required
+                        autofocus
+                        autocomplete="name"
+                    />
+                </div>
                 <InputError class="mt-2" :message="form.errors.name" />
             </div>
 
-            <div class="mt-4">
-                <InputLabel for="email" value="Email" />
-                <TextInput
-                    id="email"
-                    v-model="form.email"
-                    type="email"
-                    class="mt-1 block w-full"
-                    required
-                    autocomplete="username"
-                />
+            <!-- Email 輸入框 -->
+            <div class="relative">
+                <InputLabel for="email" value="電子郵件" class="text-gray-700 dark:text-gray-300 font-medium" />
+                <div class="relative mt-1">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i class="fas fa-envelope text-gray-400 dark:text-gray-500"></i>
+                    </div>
+                    <TextInput
+                        id="email"
+                        v-model="form.email"
+                        type="email"
+                        class="pl-10 block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-purple-500 focus:ring-purple-500 transition-colors"
+                        placeholder="請輸入您的電子郵件"
+                        required
+                        autocomplete="username"
+                    />
+                </div>
                 <InputError class="mt-2" :message="form.errors.email" />
             </div>
 
-            <div class="mt-4">
-                <InputLabel for="password" value="Password" />
-                <TextInput
-                    id="password"
-                    v-model="form.password"
-                    type="password"
-                    class="mt-1 block w-full"
-                    required
-                    autocomplete="new-password"
-                />
+            <!-- 密碼輸入框 -->
+            <div class="relative">
+                <InputLabel for="password" value="密碼" class="text-gray-700 dark:text-gray-300 font-medium" />
+                <div class="relative mt-1">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i class="fas fa-lock text-gray-400 dark:text-gray-500"></i>
+                    </div>
+                    <TextInput
+                        id="password"
+                        v-model="form.password"
+                        type="password"
+                        class="pl-10 block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-purple-500 focus:ring-purple-500 transition-colors"
+                        placeholder="請輸入您的密碼"
+                        required
+                        autocomplete="new-password"
+                    />
+                </div>
                 <InputError class="mt-2" :message="form.errors.password" />
             </div>
 
-            <div class="mt-4">
-                <InputLabel for="password_confirmation" value="Confirm Password" />
-                <TextInput
-                    id="password_confirmation"
-                    v-model="form.password_confirmation"
-                    type="password"
-                    class="mt-1 block w-full"
-                    required
-                    autocomplete="new-password"
-                />
+            <!-- 確認密碼輸入框 -->
+            <div class="relative">
+                <InputLabel for="password_confirmation" value="確認密碼" class="text-gray-700 dark:text-gray-300 font-medium" />
+                <div class="relative mt-1">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <i class="fas fa-lock text-gray-400 dark:text-gray-500"></i>
+                    </div>
+                    <TextInput
+                        id="password_confirmation"
+                        v-model="form.password_confirmation"
+                        type="password"
+                        class="pl-10 block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-purple-500 focus:ring-purple-500 transition-colors"
+                        placeholder="請再次輸入密碼"
+                        required
+                        autocomplete="new-password"
+                    />
+                </div>
                 <InputError class="mt-2" :message="form.errors.password_confirmation" />
             </div>
 
-            <div v-if="$page.props.jetstream.hasTermsAndPrivacyPolicyFeature" class="mt-4">
-                <InputLabel for="terms">
-                    <div class="flex items-center">
-                        <Checkbox id="terms" v-model:checked="form.terms" name="terms" required />
-
-                        <div class="ms-2">
-                            I agree to the <a target="_blank" :href="route('terms.show')" class="underline text-sm text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">Terms of Service</a> and <a target="_blank" :href="route('policy.show')" class="underline text-sm text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">Privacy Policy</a>
-                        </div>
+            <!-- 服務條款 -->
+            <div v-if="$page.props.jetstream.hasTermsAndPrivacyPolicyFeature" class="relative">
+                <label class="flex items-start">
+                    <Checkbox id="terms" v-model:checked="form.terms" name="terms" required class="mt-1" />
+                    <div class="ms-3 text-sm text-gray-600 dark:text-gray-300">
+                        <i class="fas fa-check-circle mr-1 text-green-500"></i>
+                        我同意 
+                        <a target="_blank" :href="route('terms.show')" class="text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300 font-medium transition-colors">
+                            服務條款
+                        </a> 
+                        和 
+                        <a target="_blank" :href="route('policy.show')" class="text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300 font-medium transition-colors">
+                            隱私政策
+                        </a>
                     </div>
-                    <InputError class="mt-2" :message="form.errors.terms" />
-                </InputLabel>
+                </label>
+                <InputError class="mt-2" :message="form.errors.terms" />
             </div>
 
-            <div class="flex items-center justify-end mt-4">
-                <Link :href="route('login')" class="underline text-sm text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                    Already registered?
-                </Link>
-
-                <PrimaryButton class="ms-4" :class="{ 'opacity-25': form.processing }" :disabled="form.processing">
-                    Register
+            <!-- 註冊按鈕 -->
+            <div class="pt-4">
+                <PrimaryButton 
+                    class="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-all duration-200 transform hover:scale-105 shadow-lg" 
+                    :class="{ 'opacity-50 cursor-not-allowed': form.processing }" 
+                    :disabled="form.processing"
+                >
+                    <i v-if="form.processing" class="fas fa-spinner fa-spin mr-2"></i>
+                    <i v-else class="fas fa-user-plus mr-2"></i>
+                    {{ form.processing ? '註冊中...' : '立即註冊' }}
                 </PrimaryButton>
+            </div>
+
+            <!-- 登入連結 -->
+            <div class="text-center pt-4 border-t border-gray-200 dark:border-gray-600">
+                <p class="text-sm text-gray-600 dark:text-gray-300">
+                    已有帳戶？
+                    <Link :href="route('login')" class="text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300 font-medium transition-colors">
+                        <i class="fas fa-sign-in-alt mr-1"></i>
+                        立即登入
+                    </Link>
+                </p>
             </div>
         </form>
     </AuthenticationCard>

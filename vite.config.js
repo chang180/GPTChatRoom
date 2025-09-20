@@ -44,6 +44,7 @@ export default defineConfig({
             host: 'localhost', // HMR 使用 localhost
             port: 5173,
             protocol: 'ws', // 使用 WebSocket 而不是 WSS
+            clientPort: 5173, // 明確指定客戶端端口
         },
         https: false, // 在 Herd 环境中禁用 HTTPS
     },

@@ -25,6 +25,12 @@ const submit = () => {
         remember: form.remember ? 'on' : '',
     })).post(route('login'), {
         onFinish: () => form.reset('password'),
+        onError: (errors) => {
+            // 如果有認證錯誤，顯示友好訊息
+            if (errors.email || errors.password) {
+                form.setError('message', '登入失敗，請檢查您的電子郵件和密碼是否正確');
+            }
+        }
     });
 };
 </script>
@@ -37,8 +43,22 @@ const submit = () => {
             <AuthenticationCardLogo />
         </template>
 
-        <div v-if="status" class="mb-4 font-medium text-sm text-green-600">
-            {{ status }}
+        <!-- 成功訊息 -->
+        <div v-if="status" class="mb-4 p-4 bg-green-100 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+            <div class="flex items-center">
+                <i class="fas fa-check-circle text-green-600 dark:text-green-400 mr-2"></i>
+                <p class="text-sm font-medium text-green-800 dark:text-green-300">{{ status }}</p>
+            </div>
+        </div>
+
+        <!-- 一般錯誤訊息 -->
+        <div v-if="form.errors.message || (form.hasErrors && (form.errors.email || form.errors.password))" class="mb-4 p-4 bg-red-100 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+            <div class="flex items-center">
+                <i class="fas fa-exclamation-triangle text-red-600 dark:text-red-400 mr-2"></i>
+                <p class="text-sm font-medium text-red-800 dark:text-red-300">
+                    {{ form.errors.message || '登入失敗，請檢查您的電子郵件和密碼是否正確' }}
+                </p>
+            </div>
         </div>
 
         <form @submit.prevent="submit" class="space-y-6">
