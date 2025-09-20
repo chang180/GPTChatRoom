@@ -20,5 +20,13 @@ return Application::configure(basePath: dirname(__DIR__))
         //
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        //
+        $exceptions->render(function (\Illuminate\Auth\AuthenticationException $e, $request) {
+            if ($request->is('login') && $request->isMethod('POST')) {
+                return back()->withErrors([
+                    'email' => ['登入失敗，請檢查您的電子郵件和密碼是否正確']
+                ])->onlyInput('email');
+            }
+            
+            return redirect()->route('login');
+        });
     })->create();

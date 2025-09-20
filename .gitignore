@@ -18,3 +18,7 @@ yarn-error.log
 /.fleet
 /.idea
 /.vscode
+
+# Laravel IDE Helper files
+_ide_helper.php
+_ide_helper_models.php

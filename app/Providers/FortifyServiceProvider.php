@@ -33,6 +33,36 @@ class FortifyServiceProvider extends ServiceProvider
         Fortify::updateUserPasswordsUsing(UpdateUserPassword::class);
         Fortify::resetUserPasswordsUsing(ResetUserPassword::class);
 
+        // 自定義登入邏輯
+        Fortify::authenticateUsing(function (Request $request) {
+            $user = \App\Models\User::where('email', $request->email)->first();
+
+            if ($user) {
+                // 檢查密碼是否使用 Bcrypt 算法
+                if (!str_starts_with($user->password, '$2y$')) {
+                    // 如果密碼不是 Bcrypt，返回 null 讓 Fortify 處理錯誤
+                    return null;
+                }
+
+                if (\Hash::check($request->password, $user->password)) {
+                    return $user;
+                }
+            }
+
+            // 登入失敗，返回 null 讓 Fortify 處理錯誤
+            return null;
+        });
+
+        // 自定義登入失敗回應
+        Fortify::loginView(function () {
+            return inertia('Auth/Login');
+        });
+
+        // 自定義註冊失敗回應
+        Fortify::registerView(function () {
+            return inertia('Auth/Register');
+        });
+
         RateLimiter::for('login', function (Request $request) {
             $throttleKey = Str::transliterate(Str::lower($request->input(Fortify::username())).'|'.$request->ip());
 

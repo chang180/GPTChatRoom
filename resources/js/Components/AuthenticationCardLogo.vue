@@ -4,15 +4,19 @@ import { Link } from '@inertiajs/vue3';
 
 <template>
     <Link :href="'/'">
-        <svg
-            class="w-16 h-16"
-            viewBox="0 0 64 64"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-        >
-            <circle cx="32" cy="32" r="32" fill="#4A90E2"/>
-            <path d="M32 16C23.2 16 16 23.2 16 32s7.2 16 16 16c1.6 0 3.2-.2 4.7-.7L48 48l-3.3-9.3c1.1-2.1 1.7-4.5 1.7-7 0-8.8-7.2-16-16-16zm0 28c-6.6 0-12-5.4-12-12s5.4-12 12-12 12 5.4 12 12c0 1.9-.4 3.7-1.1 5.3l-1.5 4.2 4.2 1.5C42.7 44.6 37.5 46 32 46z" fill="#fff"/>
-            <path d="M22 34h20v-4H22v4z" fill="#fff"/>
-        </svg>
+        <div class="group relative">
+            <!-- 主圖示 -->
+            <div class="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg group-hover:shadow-xl transition-all duration-300 transform group-hover:scale-110">
+                <i class="fas fa-robot text-white text-2xl"></i>
+            </div>
+            
+            <!-- 返回首頁提示 -->
+            <div class="absolute -top-2 -right-2 w-6 h-6 bg-white dark:bg-gray-800 rounded-full flex items-center justify-center shadow-md group-hover:scale-110 transition-transform duration-200">
+                <i class="fas fa-home text-blue-600 text-xs"></i>
+            </div>
+            
+            <!-- 懸停效果 -->
+            <div class="absolute inset-0 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
+        </div>
     </Link>
 </template>

@@ -7,17 +7,24 @@ import { marked } from 'marked';
 
 const props = defineProps({
     messages: Array,
+    pagination: Object,
     user: Object,
 });
 
 // 創建一個純淨的消息數組，避免序列化問題
 const messages = reactive([...(props.messages || [])]);
+const pagination = reactive(props.pagination || {});
 const newMessage = ref('');
 const user = ref(props.user);
 const loading = ref(false);
+const loadingMore = ref(false);
 const error = ref(null);
 const abortController = ref(null);
 const messagesContainer = ref(null);
+
+// 新增的功能變數
+const messageType = ref('ai'); // 'ai' 或 'direct'
+const messagesPerPage = ref(30);
 
 // 使用一個簡單的響應式變數來追蹤更新
 const updateCounter = ref(0);
@@ -26,6 +33,51 @@ const messageIdCounter = ref(0);
 // 生成唯一的消息 ID
 const generateMessageId = () => {
     return `msg_${Date.now()}_${++messageIdCounter.value}`;
+};
+
+// 載入更多歷史訊息
+const loadMoreMessages = async () => {
+    if (loadingMore.value || !pagination.has_more_pages) {
+        return;
+    }
+    
+    loadingMore.value = true;
+    
+    try {
+        const nextPage = pagination.current_page + 1;
+        const response = await axios.get(route('chat.load-more'), {
+            params: {
+                page: nextPage,
+                per_page: messagesPerPage.value
+            }
+        });
+        
+        // 將新訊息添加到現有訊息列表的前面
+        messages.unshift(...response.data.messages);
+        
+        // 更新分頁資訊
+        Object.assign(pagination, response.data.pagination);
+        
+    } catch (error) {
+        console.error('Failed to load more messages:', error);
+    } finally {
+        loadingMore.value = false;
+    }
+};
+
+// 處理滾動事件，實現無限滾動
+const handleScroll = () => {
+    if (!messagesContainer.value) return;
+    
+    const container = messagesContainer.value;
+    const scrollTop = container.scrollTop;
+    const scrollHeight = container.scrollHeight;
+    const clientHeight = container.clientHeight;
+    
+    // 當滾動到頂部附近時載入更多訊息
+    if (scrollTop < 100 && pagination.has_more_pages && !loadingMore.value) {
+        loadMoreMessages();
+    }
 };
 
 // 強制觸發響應式更新（減少不必要的更新）
@@ -50,21 +102,32 @@ const sendMessage = async () => {
         const now = new Date();
         const userTimestamp = now.toISOString();
 
-        // GPT 消息時間戳稍微晚一點，確保它在排序中位於最上方
-        const gptTimestamp = new Date(now.getTime() + 1).toISOString();
-
         // 添加用戶消息
         const userMessage = {
             id: generateMessageId(),
             user: {
                 name: user.value?.name || 'User',
-                // 只保留必要的用戶資訊，避免序列化問題
             },
             text: messageContent,
             created_at: userTimestamp,
             sender_type: 'user',
+            message_type: messageType.value, // 記錄訊息類型
         };
         messages.push(userMessage);
+
+        // 觸發更新，確保新消息顯示在最上方
+        triggerUpdate(true);
+
+        // 如果是直接發送模式，不需要 AI 回應
+        if (messageType.value === 'direct') {
+            return;
+        }
+
+        // 如果是 AI 發問模式，發送給 GPT
+        loading.value = true;
+
+        // GPT 消息時間戳稍微晚一點，確保它在排序中位於最上方
+        const gptTimestamp = new Date(now.getTime() + 1).toISOString();
 
         // 創建 GPT 回應消息（初始為空）
         const gptMessage = {
@@ -79,11 +142,6 @@ const sendMessage = async () => {
         // 將消息添加到響應式數組中，這樣 Vue 可以追蹤變化
         const messageIndex = messages.length;
         messages.push(gptMessage);
-
-        // 觸發更新，確保新消息顯示在最上方
-        triggerUpdate(true);
-
-        loading.value = true;
 
         // 創建新的 AbortController
         abortController.value = new AbortController();
@@ -124,12 +182,18 @@ const sendMessage = async () => {
                                 if ('content' in eventData && eventData.content !== null) {
                                     // 直接修改響應式數組中的對象，Vue 會檢測到變化
                                     messages[messageIndex].text += eventData.content;
+                                    
+                                    // 第一次收到內容時，停止 loading 狀態
+                                    if (loading.value) {
+                                        loading.value = false;
+                                    }
                                     // 不在每次流式更新時調用 triggerUpdate，讓 Vue 自然響應
                                 }
 
                                 // 處理完成
                                 if (eventData.done) {
                                     messages[messageIndex].isStreaming = false;
+                                    loading.value = false;
                                     // 只在完成時觸發一次更新
                                     triggerUpdate();
                                 }
@@ -238,82 +302,206 @@ const clearError = () => {
     error.value = null;
 };
 
-// 組件掛載時確保滾動位置正確
+// 清除所有聊天記錄
+const clearAllMessages = async () => {
+    if (confirm('確定要清除所有聊天記錄嗎？此操作無法復原。')) {
+        try {
+            loading.value = true;
+            
+            // 調用 API 清除服務器端的記錄
+            const response = await axios.delete(route('chat.clear'));
+            
+            if (response.data.success) {
+                // 清除客戶端的記錄
+                messages.splice(0, messages.length);
+                Object.assign(pagination, {
+                    current_page: 1,
+                    last_page: 1,
+                    per_page: messagesPerPage.value,
+                    total: 0,
+                    has_more_pages: false,
+                });
+                triggerUpdate(true);
+                
+                // 顯示成功訊息
+                console.log(`✅ ${response.data.message} (已刪除 ${response.data.deleted_count} 條記錄)`);
+            } else {
+                throw new Error(response.data.message || '清除記錄失敗');
+            }
+        } catch (error) {
+            console.error('清除記錄失敗:', error);
+            alert('清除記錄時發生錯誤，請稍後再試。');
+        } finally {
+            loading.value = false;
+        }
+    }
+};
+
+// 更改每頁訊息數量
+const changeMessagesPerPage = async () => {
+    try {
+        // 重新載入訊息以應用新的分頁設定
+        messages.splice(0, messages.length);
+        Object.assign(pagination, {
+            current_page: 1,
+            last_page: 1,
+            per_page: messagesPerPage.value,
+            total: 0,
+            has_more_pages: false,
+        });
+        
+        // 載入第一頁
+        await loadMoreMessages();
+    } catch (error) {
+        console.error('更改分頁設定失敗:', error);
+    }
+};
+
+// 組件掛載時確保滾動位置正確並添加滾動事件監聽器
 onMounted(() => {
     nextTick(() => {
         if (messagesContainer.value) {
             messagesContainer.value.scrollTop = 0;
+            // 添加滾動事件監聽器
+            messagesContainer.value.addEventListener('scroll', handleScroll);
         }
     });
 });
 
-// 組件卸載時清理正在進行的請求
+// 組件卸載時清理正在進行的請求並移除事件監聽器
 onUnmounted(() => {
     if (abortController.value) {
         abortController.value.abort('Component unmounted');
         abortController.value = null;
     }
+    
+    // 移除滾動事件監聽器
+    if (messagesContainer.value) {
+        messagesContainer.value.removeEventListener('scroll', handleScroll);
+    }
+    
     loading.value = false;
 });
 </script>
 
 <template>
     <AppLayout title="Chatroom">
-        <!-- 聊天室主容器 - 佔滿可用空間 -->
-        <div class="h-screen flex flex-col pt-16">
-            <div class="flex-1 flex flex-col bg-white">
-                <!-- 聊天室標題 -->
-                <div class="bg-blue-600 text-white p-4 flex justify-between items-center">
-                    <h1 class="text-xl font-semibold">GPT Chat Room</h1>
-                    <button
-                        v-if="loading"
-                        @click="cancelRequest"
-                        class="px-3 py-1 bg-red-500 hover:bg-red-600 text-white text-sm rounded-md"
-                    >
-                        取消請求
-                    </button>
+        <!-- 聊天室主容器 - 佔滿可用空間，移除頂部間距 -->
+        <div class="h-screen flex flex-col">
+            <div class="flex-1 flex flex-col bg-white dark:bg-gray-900">
+                <!-- 控制區域 -->
+                <div class="bg-blue-600 dark:bg-blue-700 text-white p-4 flex justify-between items-center shadow-lg">
+                    <div class="flex items-center space-x-4">
+                        <!-- 訊息類型選擇 -->
+                        <div class="flex bg-blue-500 dark:bg-blue-600 rounded-lg p-1">
+                            <button
+                                @click="messageType = 'ai'"
+                                :class="[
+                                    'px-3 py-1 text-sm rounded-md transition-colors duration-200',
+                                    messageType === 'ai' 
+                                        ? 'bg-white text-blue-600 dark:bg-blue-800 dark:text-blue-200' 
+                                        : 'text-blue-100 hover:text-white'
+                                ]"
+                            >
+                                <i class="fas fa-robot mr-1"></i>
+                                AI 發問
+                            </button>
+                            <button
+                                @click="messageType = 'direct'"
+                                :class="[
+                                    'px-3 py-1 text-sm rounded-md transition-colors duration-200',
+                                    messageType === 'direct' 
+                                        ? 'bg-white text-blue-600 dark:bg-blue-800 dark:text-blue-200' 
+                                        : 'text-blue-100 hover:text-white'
+                                ]"
+                            >
+                                <i class="fas fa-paper-plane mr-1"></i>
+                                直接發送
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center space-x-3">
+                        <!-- 每頁訊息數量選擇 -->
+                        <div class="flex items-center space-x-2">
+                            <label class="text-sm text-blue-100">每頁:</label>
+                            <select 
+                                v-model="messagesPerPage" 
+                                @change="changeMessagesPerPage"
+                                class="bg-blue-500 dark:bg-blue-600 text-white text-sm rounded px-2 py-1 border-0 focus:ring-2 focus:ring-blue-300"
+                            >
+                                <option value="10">10</option>
+                                <option value="20">20</option>
+                                <option value="30">30</option>
+                                <option value="50">50</option>
+                            </select>
+                        </div>
+                        
+                        <!-- 清除聊天記錄按鈕 -->
+                        <button
+                            @click="clearAllMessages"
+                            class="px-3 py-1 bg-red-500 hover:bg-red-600 text-white text-sm rounded-md transition-colors duration-200"
+                            title="清除所有聊天記錄"
+                        >
+                            <i class="fas fa-trash-alt mr-1"></i>
+                            清除記錄
+                        </button>
+                        
+                        <!-- 取消請求按鈕 -->
+                        <button
+                            v-if="loading"
+                            @click="cancelRequest"
+                            class="px-3 py-1 bg-orange-500 hover:bg-orange-600 text-white text-sm rounded-md transition-colors duration-200"
+                        >
+                            <i class="fas fa-stop mr-1"></i>
+                            取消請求
+                        </button>
+                    </div>
                 </div>
 
                 <!-- 聊天室容器 -->
                 <div class="flex flex-col flex-1 min-h-0">
-                    <!-- 輸入區域 - 移到上面 -->
-                    <div class="p-4 bg-white border-b flex-shrink-0">
+                    <!-- 輸入區域 -->
+                    <div class="p-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
                         <div class="flex space-x-3">
                             <input
                                 v-model="newMessage"
                                 @keyup.enter="sendMessage"
-                                placeholder="輸入您的訊息..."
-                                class="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                :placeholder="messageType === 'ai' ? '向 AI 發問...' : '輸入您的訊息...'"
+                                class="flex-1 p-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400 placeholder-gray-500 dark:placeholder-gray-400"
                                 :disabled="loading"
                             />
                             <button
                                 @click="sendMessage"
-                                class="px-6 py-3 text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                                class="px-6 py-3 text-white bg-blue-600 dark:bg-blue-700 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
                                 :disabled="loading || !newMessage.trim()"
                             >
-                                <span v-if="!loading">發送</span>
+                                <i v-if="!loading" :class="messageType === 'ai' ? 'fas fa-robot mr-2' : 'fas fa-paper-plane mr-2'"></i>
+                                <i v-else class="fas fa-spinner fa-spin mr-2"></i>
+                                <span v-if="!loading">{{ messageType === 'ai' ? '發送給 AI' : '發送' }}</span>
                                 <span v-else>處理中...</span>
                             </button>
                         </div>
 
                         <!-- 錯誤提示 -->
-                        <div v-if="error" class="mt-2 p-2 bg-red-100 text-red-700 rounded-lg flex justify-between items-center">
-                            <span>{{ error }}</span>
-                            <button @click="clearError" class="text-red-500 hover:text-red-700">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
-                                </svg>
+                        <div v-if="error" class="mt-2 p-3 bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-400 rounded-lg flex justify-between items-center border border-red-200 dark:border-red-800">
+                            <div class="flex items-center">
+                                <i class="fas fa-exclamation-triangle mr-2"></i>
+                                <span>{{ error }}</span>
+                            </div>
+                            <button @click="clearError" class="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors duration-200">
+                                <i class="fas fa-times"></i>
                             </button>
                         </div>
                     </div>
 
-                    <!-- 訊息區域 - 反向排列 -->
-                    <div id="messages" ref="messagesContainer" class="flex-1 p-4 overflow-y-auto bg-gray-50 min-h-0">
+                    <!-- 訊息區域 -->
+                    <div id="messages" ref="messagesContainer" class="flex-1 p-4 overflow-y-auto bg-gray-50 dark:bg-gray-900 min-h-0">
                         <div v-for="(message, index) in sortedMessages" :key="message.id || `fallback-${index}`" class="mb-3">
                             <div :class="{
-                                'bg-blue-100 p-3 rounded-lg': message.sender_type === 'gpt',
-                                'bg-white p-3 rounded-lg border': message.sender_type === 'user',
-                                'bg-red-50 p-3 rounded-lg border border-red-200': message.sender_type === 'error'
+                                'bg-blue-100 dark:bg-blue-900/30 p-3 rounded-lg border border-blue-200 dark:border-blue-700': message.sender_type === 'gpt',
+                                'bg-white dark:bg-gray-800 p-3 rounded-lg border border-gray-200 dark:border-gray-700': message.sender_type === 'user',
+                                'bg-red-50 dark:bg-red-900/20 p-3 rounded-lg border border-red-200 dark:border-red-800': message.sender_type === 'error'
                             }">
                                 <div class="flex items-start space-x-2">
                                     <div class="flex-shrink-0">
@@ -332,14 +520,24 @@ onUnmounted(() => {
                                         <div class="flex items-center space-x-2">
                                             <span class="text-sm font-medium"
                                                   :class="{
-                                                      'text-gray-900': message.sender_type !== 'error',
-                                                      'text-red-700': message.sender_type === 'error'
+                                                      'text-gray-900 dark:text-gray-100': message.sender_type !== 'error',
+                                                      'text-red-700 dark:text-red-400': message.sender_type === 'error'
                                                   }">
                                                 {{ message.sender_type === 'gpt' ? 'GPT Assistant' :
                                                    message.sender_type === 'error' ? '系統訊息' :
                                                    message.user.name }}
                                             </span>
-                                            <span class="text-xs text-gray-500">
+                                            <!-- 訊息類型標示 -->
+                                            <span v-if="message.sender_type === 'user' && message.message_type" 
+                                                  class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
+                                                  :class="{
+                                                      'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300': message.message_type === 'ai',
+                                                      'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300': message.message_type === 'direct'
+                                                  }">
+                                                <i :class="message.message_type === 'ai' ? 'fas fa-robot mr-1' : 'fas fa-paper-plane mr-1'"></i>
+                                                {{ message.message_type === 'ai' ? 'AI 發問' : '直接發送' }}
+                                            </span>
+                                            <span class="text-xs text-gray-500 dark:text-gray-400">
                                                 {{ formatDate(message.created_at) }}
                                             </span>
                                             <!-- 顯示流式接收指示器 -->
@@ -349,8 +547,8 @@ onUnmounted(() => {
                                         </div>
                                         <div class="mt-1 text-sm"
                                              :class="{
-                                                 'text-gray-700': message.sender_type !== 'error',
-                                                 'text-red-600': message.sender_type === 'error'
+                                                 'text-gray-700 dark:text-gray-300': message.sender_type !== 'error',
+                                                 'text-red-600 dark:text-red-400': message.sender_type === 'error'
                                              }">
                                             <div v-if="message.sender_type === 'gpt'" v-html="marked.parse(message.text || '')"></div>
                                             <div v-else>{{ message.text }}</div>
@@ -361,6 +559,14 @@ onUnmounted(() => {
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- 載入更多訊息的指示器 -->
+        <div v-if="loadingMore" class="flex justify-center py-4 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+            <div class="flex items-center space-x-2 text-gray-600 dark:text-gray-400">
+                <div class="w-4 h-4 border-2 border-gray-300 dark:border-gray-600 border-t-blue-600 dark:border-t-blue-400 rounded-full animate-spin"></div>
+                <span>載入更多訊息...</span>
             </div>
         </div>
 

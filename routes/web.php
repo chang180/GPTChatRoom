@@ -19,13 +19,16 @@ Route::middleware([
 
     // Chat room route
     Route::get('/chat', [ChatRoomController::class, 'index'])->name('chat.index');
-
-    // Chat room client route
-    Route::get('/chat-client', [ChatRoomController::class, 'client'])->name('chat.client');
+    
+    // Load more messages for infinite scroll
+    Route::get('/chat/load-more', [ChatRoomController::class, 'loadMoreMessages'])->name('chat.load-more');
 
     // GPT API message route
     Route::post('/chat/send-message', [ChatRoomController::class, 'sendMessage'])->name('chat.send-message');
 
     // GPT API streaming message route - 修改為 POST 請求
     Route::post('/chat/send-message-stream', [ChatRoomController::class, 'sendMessageStream'])->name('chat.send-message-stream');
+
+    // 清除聊天室記錄
+    Route::delete('/chat/clear', [ChatRoomController::class, 'clearChatRoom'])->name('chat.clear');
 });
