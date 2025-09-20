@@ -37,7 +37,13 @@ class MessageCacheService
         }
         
         $messages = $query->offset($offset)->limit($perPage)->get();
-        $totalCount = $query->count();
+        
+        // 重新查詢以獲取正確的總數
+        $countQuery = Message::query();
+        if ($chatRoomId) {
+            $countQuery->where('chat_room_id', $chatRoomId);
+        }
+        $totalCount = $countQuery->count();
 
         return [
             'messages' => $messages->toArray(),

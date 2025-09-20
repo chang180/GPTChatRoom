@@ -32,7 +32,7 @@ class ChatRoomController extends Controller
         $user = Auth::user();
         
         // 獲取指定的聊天室，默認為第一個主題聊天室
-        $theme = $request->get('theme', 'work');
+        $theme = $request->route('theme') ?? $request->get('theme', 'work');
         $chatRoom = ChatRoom::getGlobalTheme($theme);
         
         // 如果指定的主題不存在，使用工作聊天室
@@ -146,7 +146,7 @@ class ChatRoomController extends Controller
         $user = Auth::user();
         
         // 獲取指定的聊天室，默認為工作聊天室
-        $theme = $request->get('theme', 'work');
+        $theme = $request->route('theme') ?? $request->get('theme', 'work');
         $chatRoom = ChatRoom::getGlobalTheme($theme);
         
         if (!$chatRoom) {
@@ -226,7 +226,7 @@ class ChatRoomController extends Controller
         $user = Auth::user();
         
         // 獲取指定的聊天室
-        $theme = $request->get('theme', 'work');
+        $theme = $request->route('theme') ?? $request->get('theme', 'work');
         $chatRoom = ChatRoom::getGlobalTheme($theme);
         
         if (!$chatRoom) {
