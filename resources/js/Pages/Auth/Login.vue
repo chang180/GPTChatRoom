@@ -26,10 +26,15 @@ const submit = () => {
     })).post(route('login'), {
         onFinish: () => form.reset('password'),
         onError: (errors) => {
+            console.log('Login errors:', errors);
             // 如果有認證錯誤，顯示友好訊息
-            if (errors.email || errors.password) {
+            if (errors.email || errors.password || Object.keys(errors).length > 0) {
                 form.setError('message', '登入失敗，請檢查您的電子郵件和密碼是否正確');
             }
+        },
+        onSuccess: () => {
+            // 登入成功，清除任何錯誤訊息
+            form.clearErrors();
         }
     });
 };
