@@ -18,10 +18,13 @@ GPT Chat Room 是一個現代化的即時聊天應用程式，讓使用者可以
 ### ✨ 主要特色
 
 - 🤖 **AI 聊天**: 與 OpenAI GPT-5-nano 進行智能對話
-- 💬 **即時聊天**: 流暢的對話體驗，支援 Markdown 格式回應
+- 💬 **多聊天室系統**: 4個主題聊天室（工作、學習、創意、日常）
+- 🔄 **即時聊天**: 流暢的對話體驗，支援 Markdown 格式回應
+- 📝 **訊息分類**: 支援「直接發送」和「AI 發問」兩種訊息類型
 - 🔐 **完整認證**: Laravel Jetstream 提供使用者註冊、登入、雙因子認證
+- 🌙 **Dark Mode**: 完整的暗黑模式支援
 - 📱 **響應式設計**: 適配桌面和行動裝置
-- 📝 **訊息歷史**: 自動儲存和載入聊天記錄
+- 💾 **訊息歷史**: 自動儲存和載入聊天記錄
 - 🎨 **現代化 UI**: 使用 Tailwind CSS 打造美觀介面
 - ⚡ **SPA 體驗**: Inertia.js 提供單頁應用程式體驗
 
@@ -105,8 +108,9 @@ php artisan serve
 
 1. **註冊帳號** - 前往註冊頁面建立新帳號
 2. **登入系統** - 使用您的帳號登入
-3. **開始聊天** - 點擊導航列的 "ChatRoom" 開始與 GPT 對話
-4. **享受對話** - 輸入訊息並享受 AI 助手的智能回應
+3. **選擇聊天室** - 點擊導航列的 "ChatRoom" 進入聊天室，選擇主題頁籤
+4. **開始聊天** - 選擇「AI 發問」與 GPT 對話，或選擇「直接發送」發送一般訊息
+5. **享受對話** - 在不同主題聊天室中享受 AI 助手的智能回應
 
 ## 🏗️ 專案架構
 
@@ -115,33 +119,42 @@ php artisan serve
 GPTChatRoom/
 ├── app/
 │   ├── Http/Controllers/
-│   │   ├── ChatRoomController.php    # 聊天室控制器
+│   │   ├── ChatRoomController.php    # 聊天室控制器（支援多聊天室）
 │   │   └── HomeController.php        # 首頁控制器
 │   ├── Models/
 │   │   ├── User.php                  # 使用者模型
-│   │   └── Message.php               # 訊息模型
+│   │   ├── Message.php               # 訊息模型（關聯聊天室）
+│   │   └── ChatRoom.php              # 聊天室模型
 │   └── Services/
-│       └── GPTService.php            # GPT API 服務
+│       ├── GPTService.php            # GPT API 服務
+│       └── MessageCacheService.php   # 訊息快取服務
 ├── resources/
 │   ├── js/Pages/
-│   │   ├── ChatRoom.vue              # 聊天室頁面
+│   │   ├── ChatRoom.vue              # 聊天室頁面（多頁籤支援）
 │   │   └── Dashboard.vue             # 儀表板
 │   └── css/
-│       └── app.css                   # 主要樣式
+│       └── app.css                   # 主要樣式（支援 Dark Mode）
 ├── database/
 │   ├── migrations/                   # 資料庫遷移檔案
 │   └── database.sqlite               # SQLite 資料庫
 └── routes/
-    └── web.php                       # 網頁路由
+    └── web.php                       # 網頁路由（支援主題路由）
 ```
 
 ## 🎯 主要功能
+
+### 多聊天室系統
+- **4個主題聊天室**：工作、學習、創意、日常
+- **全局共享**：所有用戶共享相同的聊天室
+- **頁籤切換**：流暢的聊天室切換體驗
+- **訊息分類**：支援直接發送和 AI 發問
 
 ### 聊天系統
 - 與 GPT-5-nano 進行對話
 - 支援 Markdown 格式回應
 - 自動儲存聊天歷史
 - 即時載入狀態提示
+- 聊天室特定記錄清除
 
 ### 使用者管理
 - 使用者註冊與登入
@@ -154,6 +167,8 @@ GPTChatRoom/
 - 響應式設計
 - 現代化 UI/UX
 - 快速載入與流暢動畫
+- Dark Mode 支援
+- FontAwesome 圖示整合
 
 ## 🔧 開發指南
 

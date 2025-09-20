@@ -6,8 +6,11 @@ GPT Chat Room 是一個現代化的即時聊天應用程式，讓使用者可以
 
 ### 核心功能
 - 🤖 AI 聊天：與 OpenAI GPT-5-nano 進行智能對話
-- 💬 即時聊天：流暢的對話體驗，支援 Markdown 格式回應
+- 💬 多聊天室系統：4個主題聊天室（工作、學習、創意、日常）
+- 🔄 即時聊天：流暢的對話體驗，支援 Markdown 格式回應
+- 📝 訊息分類：支援「直接發送」和「AI 發問」兩種訊息類型
 - 🔐 完整認證：Laravel Jetstream 提供使用者註冊、登入、雙因子認證
+- 🌙 Dark Mode：完整的暗黑模式支援
 - 📱 響應式設計：適配桌面和行動裝置
 - 📝 訊息歷史：自動儲存和載入聊天記錄
 - ⚡ 流式回應：支援 Server-Sent Events (SSE) 即時流式回應
@@ -39,13 +42,15 @@ GPT Chat Room 是一個現代化的即時聊天應用程式，讓使用者可以
 GPTChatRoom/
 ├── app/
 │   ├── Http/Controllers/
-│   │   ├── ChatRoomController.php    # 聊天室控制器
+│   │   ├── ChatRoomController.php    # 聊天室控制器（支援多聊天室）
 │   │   └── HomeController.php        # 首頁控制器
 │   ├── Models/
 │   │   ├── User.php                  # 使用者模型
-│   │   └── Message.php               # 訊息模型
+│   │   ├── Message.php               # 訊息模型（關聯聊天室）
+│   │   └── ChatRoom.php              # 聊天室模型
 │   ├── Services/
-│   │   └── GPTService.php            # GPT API 服務
+│   │   ├── GPTService.php            # GPT API 服務
+│   │   └── MessageCacheService.php   # 訊息快取服務
 │   └── Providers/
 │       └── GPTServiceProvider.php    # GPT 服務提供者
 ├── resources/
@@ -268,10 +273,22 @@ php artisan test
 - 新增 PWA 功能
 
 ### 3. 效能優化
-- 實現訊息分頁載入
-- 新增訊息快取機制
-- 優化大型對話的處理
+- ✅ 實現訊息分頁載入
+- ✅ 新增訊息快取機制
+- ✅ 優化大型對話的處理
 - 實現背景任務處理
+
+## 📅 開發日誌
+
+### 2025-01-20 - 多聊天室系統實現
+- ✅ 實現4個主題聊天室（工作、學習、創意、日常）
+- ✅ 全局共享聊天室架構
+- ✅ 前端頁籤切換功能
+- ✅ 訊息分類系統（直接發送/AI 發問）
+- ✅ 聊天室特定記錄清除
+- ✅ Dark Mode 完整支援
+- ✅ 快取優化（支援特定聊天室）
+- ✅ 修復多個 bug 和用戶體驗問題
 
 ---
 
