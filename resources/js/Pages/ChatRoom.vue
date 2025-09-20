@@ -339,7 +339,8 @@ const clearError = () => {
 
 // 清除所有聊天記錄
 const clearAllMessages = async () => {
-    if (confirm('確定要清除所有聊天記錄嗎？此操作無法復原。')) {
+    const roomName = currentChatRoom.value?.name || '當前聊天室';
+    if (confirm(`確定要清除「${roomName}」的所有聊天記錄嗎？此操作無法復原。`)) {
         try {
             loading.value = true;
             
@@ -363,7 +364,7 @@ const clearAllMessages = async () => {
                 triggerUpdate(true);
                 
                 // 顯示成功訊息
-                console.log(`✅ ${response.data.message} (已刪除 ${response.data.deleted_count} 條記錄)`);
+                console.log(`✅ 「${roomName}」${response.data.message} (已刪除 ${response.data.deleted_count} 條記錄)`);
             } else {
                 throw new Error(response.data.message || '清除記錄失敗');
             }
