@@ -85,7 +85,7 @@ const logout = () => {
                                         <span class="inline-flex rounded-md">
                                             <button
                                                 type="button"
-                                                class="inline-flex items-center px-3 py-2 text-sm font-medium leading-4 text-gray-500 transition duration-150 ease-in-out bg-white border border-transparent rounded-md hover:text-gray-700 focus:outline-none focus:bg-gray-50 active:bg-gray-50"
+                                                class="inline-flex items-center px-3 py-2 text-sm font-medium leading-4 text-gray-500 dark:text-gray-400 transition duration-150 ease-in-out bg-white dark:bg-gray-800 border border-transparent rounded-md hover:text-gray-700 dark:hover:text-gray-300 focus:outline-none focus:bg-gray-50 dark:focus:bg-gray-700 active:bg-gray-50 dark:active:bg-gray-700"
                                             >
                                                 {{
                                                     $page.props.auth.user
@@ -114,7 +114,7 @@ const logout = () => {
                                         <div class="w-60">
                                             <!-- Team Management -->
                                             <div
-                                                class="block px-4 py-2 text-xs text-gray-400"
+                                                class="block px-4 py-2 text-xs text-gray-400 dark:text-gray-500"
                                             >
                                                 Manage Team
                                             </div>
@@ -150,11 +150,11 @@ const logout = () => {
                                                 "
                                             >
                                                 <div
-                                                    class="border-t border-gray-200"
+                                                    class="border-t border-gray-200 dark:border-gray-600"
                                                 />
 
                                                 <div
-                                                    class="block px-4 py-2 text-xs text-gray-400"
+                                                    class="block px-4 py-2 text-xs text-gray-400 dark:text-gray-500"
                                                 >
                                                     Switch Teams
                                                 </div>
@@ -217,33 +217,12 @@ const logout = () => {
                             <div class="relative ms-3">
                                 <Dropdown align="right" width="48">
                                     <template #trigger>
-                                        <button
-                                            v-if="
-                                                $page.props.jetstream
-                                                    .managesProfilePhotos
-                                            "
-                                            class="flex text-sm transition border-2 border-transparent rounded-full focus:outline-none focus:border-gray-300"
-                                        >
-                                            <img
-                                                class="object-cover w-8 h-8 rounded-full"
-                                                :src="
-                                                    $page.props.auth.user
-                                                        .profile_photo_url
-                                                "
-                                                :alt="
-                                                    $page.props.auth.user.name
-                                                "
-                                            />
-                                        </button>
-
-                                        <span
-                                            v-else
-                                            class="inline-flex rounded-md"
-                                        >
+                                        <span class="inline-flex rounded-md">
                                             <button
                                                 type="button"
-                                                class="inline-flex items-center px-3 py-2 text-sm font-medium leading-4 text-gray-500 transition duration-150 ease-in-out bg-white border border-transparent rounded-md hover:text-gray-700 focus:outline-none focus:bg-gray-50 active:bg-gray-50"
+                                                class="inline-flex items-center px-3 py-2 text-sm font-medium leading-4 text-gray-500 dark:text-gray-400 transition duration-150 ease-in-out bg-white dark:bg-gray-800 border border-transparent rounded-md hover:text-gray-700 dark:hover:text-gray-300 focus:outline-none focus:bg-gray-50 dark:focus:bg-gray-700 active:bg-gray-50 dark:active:bg-gray-700"
                                             >
+                                                <i class="fas fa-user-circle mr-2 text-lg"></i>
                                                 {{ $page.props.auth.user.name }}
 
                                                 <svg
@@ -267,7 +246,7 @@ const logout = () => {
                                     <template #content>
                                         <!-- Account Management -->
                                         <div
-                                            class="block px-4 py-2 text-xs text-gray-400"
+                                            class="block px-4 py-2 text-xs text-gray-400 dark:text-gray-500"
                                         >
                                             Manage Account
                                         </div>
@@ -278,7 +257,7 @@ const logout = () => {
                                             Profile
                                         </DropdownLink>
 
-                                        <div class="border-t border-gray-200" />
+                                        <div class="border-t border-gray-200 dark:border-gray-600" />
 
                                         <!-- Authentication -->
                                         <form @submit.prevent="logout">
@@ -294,7 +273,7 @@ const logout = () => {
                         <!-- Hamburger -->
                         <div class="flex items-center -me-2 sm:hidden">
                             <button
-                                class="inline-flex items-center justify-center p-2 text-gray-400 transition duration-150 ease-in-out rounded-md hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:bg-gray-100 focus:text-gray-500"
+                                class="inline-flex items-center justify-center p-2 text-gray-400 dark:text-gray-500 transition duration-150 ease-in-out rounded-md hover:text-gray-500 dark:hover:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:bg-gray-100 dark:focus:bg-gray-700 focus:text-gray-500 dark:focus:text-gray-400"
                                 @click="
                                     showingNavigationDropdown =
                                         !showingNavigationDropdown
@@ -358,30 +337,19 @@ const logout = () => {
                     </div>
 
                     <!-- Responsive Settings Options -->
-                    <div class="pt-4 pb-1 border-t border-gray-200">
+                    <div class="pt-4 pb-1 border-t border-gray-200 dark:border-gray-600">
                         <div class="flex items-center px-4">
-                            <div
-                                v-if="
-                                    $page.props.jetstream.managesProfilePhotos
-                                "
-                                class="shrink-0 me-3"
-                            >
-                                <img
-                                    class="object-cover w-10 h-10 rounded-full"
-                                    :src="
-                                        $page.props.auth.user.profile_photo_url
-                                    "
-                                    :alt="$page.props.auth.user.name"
-                                />
+                            <div class="shrink-0 me-3">
+                                <i class="fas fa-user-circle text-3xl text-gray-400 dark:text-gray-500"></i>
                             </div>
 
                             <div>
                                 <div
-                                    class="text-base font-medium text-gray-800"
+                                    class="text-base font-medium text-gray-800 dark:text-gray-200"
                                 >
                                     {{ $page.props.auth.user.name }}
                                 </div>
-                                <div class="text-sm font-medium text-gray-500">
+                                <div class="text-sm font-medium text-gray-500 dark:text-gray-400">
                                     {{ $page.props.auth.user.email }}
                                 </div>
                             </div>
