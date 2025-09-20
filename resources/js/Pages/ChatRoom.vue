@@ -29,6 +29,20 @@ const currentChatRoom = ref(props.currentChatRoom);
 const themes = ref(props.themes || []);
 const messagesContainer = ref(null);
 
+// 監聽 props 變化，更新響應式變數
+watch(() => props.currentChatRoom, (newChatRoom) => {
+    currentChatRoom.value = newChatRoom;
+});
+
+watch(() => props.themes, (newThemes) => {
+    themes.value = newThemes || [];
+});
+
+// 計算屬性：判斷是否為當前活躍的主題
+const isActiveTheme = (themeSlug) => {
+    return currentChatRoom.value && currentChatRoom.value.slug === themeSlug;
+};
+
 // 新增的功能變數
 const messageType = ref('ai'); // 'ai' 或 'direct'
 const messagesPerPage = ref(30);
@@ -353,6 +367,7 @@ const switchTheme = async (themeSlug) => {
         await router.visit(route('chat.theme', { theme: themeSlug }), {
             preserveState: false,
             preserveScroll: false,
+            replace: true, // 使用 replace 而不是 push
         });
     } catch (error) {
         console.error('切換主題失敗:', error);
@@ -422,7 +437,7 @@ onUnmounted(() => {
                             @click="switchTheme(theme.slug)"
                             :class="[
                                 'px-6 py-3 text-sm font-medium border-b-2 transition-colors duration-200',
-                                currentChatRoom && currentChatRoom.slug === theme.slug
+                                isActiveTheme(theme.slug)
                                     ? 'text-blue-600 dark:text-blue-400 border-blue-600 dark:border-blue-400 bg-white dark:bg-gray-900'
                                     : 'text-gray-600 dark:text-gray-400 border-transparent hover:text-gray-800 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'
                             ]"
