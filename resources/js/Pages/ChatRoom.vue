@@ -7,14 +7,17 @@ import { marked } from 'marked';
 
 const props = defineProps({
     messages: Array,
+    pagination: Object,
     user: Object,
 });
 
 // 創建一個純淨的消息數組，避免序列化問題
 const messages = reactive([...(props.messages || [])]);
+const pagination = reactive(props.pagination || {});
 const newMessage = ref('');
 const user = ref(props.user);
 const loading = ref(false);
+const loadingMore = ref(false);
 const error = ref(null);
 const abortController = ref(null);
 const messagesContainer = ref(null);
@@ -26,6 +29,51 @@ const messageIdCounter = ref(0);
 // 生成唯一的消息 ID
 const generateMessageId = () => {
     return `msg_${Date.now()}_${++messageIdCounter.value}`;
+};
+
+// 載入更多歷史訊息
+const loadMoreMessages = async () => {
+    if (loadingMore.value || !pagination.has_more_pages) {
+        return;
+    }
+    
+    loadingMore.value = true;
+    
+    try {
+        const nextPage = pagination.current_page + 1;
+        const response = await axios.get(route('chat.load-more'), {
+            params: {
+                page: nextPage,
+                per_page: 30
+            }
+        });
+        
+        // 將新訊息添加到現有訊息列表的前面
+        messages.unshift(...response.data.messages);
+        
+        // 更新分頁資訊
+        Object.assign(pagination, response.data.pagination);
+        
+    } catch (error) {
+        console.error('Failed to load more messages:', error);
+    } finally {
+        loadingMore.value = false;
+    }
+};
+
+// 處理滾動事件，實現無限滾動
+const handleScroll = () => {
+    if (!messagesContainer.value) return;
+    
+    const container = messagesContainer.value;
+    const scrollTop = container.scrollTop;
+    const scrollHeight = container.scrollHeight;
+    const clientHeight = container.clientHeight;
+    
+    // 當滾動到頂部附近時載入更多訊息
+    if (scrollTop < 100 && pagination.has_more_pages && !loadingMore.value) {
+        loadMoreMessages();
+    }
 };
 
 // 強制觸發響應式更新（減少不必要的更新）
@@ -238,21 +286,29 @@ const clearError = () => {
     error.value = null;
 };
 
-// 組件掛載時確保滾動位置正確
+// 組件掛載時確保滾動位置正確並添加滾動事件監聽器
 onMounted(() => {
     nextTick(() => {
         if (messagesContainer.value) {
             messagesContainer.value.scrollTop = 0;
+            // 添加滾動事件監聽器
+            messagesContainer.value.addEventListener('scroll', handleScroll);
         }
     });
 });
 
-// 組件卸載時清理正在進行的請求
+// 組件卸載時清理正在進行的請求並移除事件監聽器
 onUnmounted(() => {
     if (abortController.value) {
         abortController.value.abort('Component unmounted');
         abortController.value = null;
     }
+    
+    // 移除滾動事件監聽器
+    if (messagesContainer.value) {
+        messagesContainer.value.removeEventListener('scroll', handleScroll);
+    }
+    
     loading.value = false;
 });
 </script>
@@ -361,6 +417,14 @@ onUnmounted(() => {
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- 載入更多訊息的指示器 -->
+        <div v-if="loadingMore" class="flex justify-center py-4 bg-gray-50 border-b">
+            <div class="flex items-center space-x-2 text-gray-600">
+                <div class="w-4 h-4 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin"></div>
+                <span>載入更多訊息...</span>
             </div>
         </div>
 

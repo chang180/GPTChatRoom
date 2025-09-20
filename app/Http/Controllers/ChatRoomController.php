@@ -7,15 +7,18 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use App\Services\GPTService;
+use App\Services\MessageCacheService;
 use Illuminate\Support\Facades\Log;
 
 class ChatRoomController extends Controller
 {
     protected $gptService;
+    protected $messageCacheService;
 
-    public function __construct(GPTService $gptService)
+    public function __construct(GPTService $gptService, MessageCacheService $messageCacheService)
     {
         $this->gptService = $gptService;
+        $this->messageCacheService = $messageCacheService;
     }
 
     public function index()
@@ -25,13 +28,33 @@ class ChatRoomController extends Controller
             abort(403, 'Unauthorized');
         }
 
-        // 加載最近的 50 條消息記錄
-        $messages = Message::with('user')->latest()->take(50)->get();
+        // 使用快取服務載入訊息，提高效能
+        $cachedData = $this->messageCacheService->getCachedMessages(1, 30);
 
         return Inertia::render('ChatRoom', [
-            'messages' => $messages,
+            'messages' => $cachedData['messages'],
+            'pagination' => $cachedData['pagination'],
             'user' => Auth::user(),
         ]);
+    }
+
+    /**
+     * 載入更多歷史訊息（無限滾動）
+     */
+    public function loadMoreMessages(Request $request)
+    {
+        // 確保用戶已認證
+        if (!Auth::check()) {
+            abort(403, 'Unauthorized');
+        }
+
+        $page = $request->get('page', 1);
+        $perPage = $request->get('per_page', 30);
+
+        // 使用快取服務載入更多訊息
+        $cachedData = $this->messageCacheService->getCachedMessages($page, $perPage);
+
+        return response()->json($cachedData);
     }
 
 
@@ -63,6 +86,9 @@ class ChatRoomController extends Controller
                 'sender_type' => 'gpt',
             ]);
 
+            // 清除快取，因為有新訊息
+            $this->messageCacheService->invalidateCacheOnNewMessage();
+
             return response()->json([
                 'message' => $message,
                 'gptResponse' => $gptMessage->text,
@@ -74,6 +100,9 @@ class ChatRoomController extends Controller
                 'text' => $errorMessage,
                 'sender_type' => 'gpt', // 假設錯誤消息也來自 GPT
             ]);
+
+            // 清除快取，因為有新訊息（即使是錯誤訊息）
+            $this->messageCacheService->invalidateCacheOnNewMessage();
 
             return response()->json(['error' => $errorMessage], 500);
         }

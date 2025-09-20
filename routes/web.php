@@ -19,7 +19,9 @@ Route::middleware([
 
     // Chat room route
     Route::get('/chat', [ChatRoomController::class, 'index'])->name('chat.index');
-
+    
+    // Load more messages for infinite scroll
+    Route::get('/chat/load-more', [ChatRoomController::class, 'loadMoreMessages'])->name('chat.load-more');
 
     // GPT API message route
     Route::post('/chat/send-message', [ChatRoomController::class, 'sendMessage'])->name('chat.send-message');
