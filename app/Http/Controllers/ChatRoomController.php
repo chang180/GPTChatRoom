@@ -86,6 +86,7 @@ class ChatRoomController extends Controller
         $data = $request->validate([
             'message' => 'required|string',
             'theme' => 'nullable|string',
+            'message_type' => 'nullable|string|in:direct,ai_query',
         ]);
 
         $user = Auth::user();
@@ -106,6 +107,19 @@ class ChatRoomController extends Controller
             'sender_type' => 'user',
         ]);
 
+        // 清除快取，因為有新訊息
+        $this->messageCacheService->invalidateCacheOnNewMessage($chatRoom->id);
+
+        // 如果是直接發送模式，只保存用戶訊息，不發送給 GPT
+        $messageType = $data['message_type'] ?? 'ai_query';
+        if ($messageType === 'direct') {
+            return response()->json([
+                'message' => $message,
+                'success' => true,
+            ]);
+        }
+
+        // 如果是 AI 發問模式，發送給 GPT
         try {
             $gptResponse = $this->gptService->sendMessage($data['message']);
             $gptMessageContent = $gptResponse['choices'][0]['message']['content'];
@@ -116,7 +130,7 @@ class ChatRoomController extends Controller
                 'sender_type' => 'gpt',
             ]);
 
-            // 清除快取，因為有新訊息
+            // 再次清除快取，因為有 GPT 回應
             $this->messageCacheService->invalidateCacheOnNewMessage($chatRoom->id);
 
             return response()->json([

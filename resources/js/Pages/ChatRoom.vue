@@ -139,8 +139,19 @@ const sendMessage = async () => {
         // 觸發更新，確保新消息顯示在最上方
         triggerUpdate(true);
 
-        // 如果是直接發送模式，不需要 AI 回應
+        // 如果是直接發送模式，需要保存到數據庫但不需要 AI 回應
         if (messageType.value === 'direct') {
+            // 發送直接訊息到後端保存
+            try {
+                await axios.post(route('chat.send-message'), {
+                    message: messageContent,
+                    theme: currentChatRoom.value?.slug || 'work',
+                    message_type: 'direct'
+                });
+            } catch (error) {
+                console.error('Failed to save direct message:', error);
+                // 如果保存失敗，可以選擇移除前端顯示的訊息或顯示錯誤
+            }
             return;
         }
 
