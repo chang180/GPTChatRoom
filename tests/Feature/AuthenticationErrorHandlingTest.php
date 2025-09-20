@@ -78,18 +78,11 @@ test('login with bcrypt error returns friendly message', function () {
     // 重新載入用戶以獲取更新的密碼
     $user->refresh();
 
-    // 檢查用戶密碼雜湊格式
-    echo "User password hash: " . substr($user->password, 0, 20) . "...\n";
-    echo "Is Bcrypt: " . (str_starts_with($user->password, '$2y$') ? 'Yes' : 'No') . "\n";
-
     $response = $this->post('/login', [
         'email' => $user->email,
         'password' => 'plaintext_password',
     ]);
 
-    // 檢查響應狀態碼
-    echo "Response status: " . $response->status() . "\n";
-    
     // 應該返回 422 或 302，而不是拋出異常
     $this->assertContains($response->status(), [302, 422]);
     
