@@ -34,21 +34,6 @@ class ChatRoomController extends Controller
         ]);
     }
 
-    public function client()
-    {
-        // 確保用戶已認證
-        if (!Auth::check()) {
-            abort(403, 'Unauthorized');
-        }
-
-        // 加載最近的 50 條消息記錄
-        $messages = Message::with('user')->latest()->take(50)->get();
-
-        return Inertia::render('ChatRoomClient', [
-            'messages' => $messages,
-            'user' => Auth::user(),
-        ]);
-    }
 
     public function sendMessage(Request $request)
     {
