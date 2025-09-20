@@ -28,8 +28,10 @@ onMounted(() => {
         isDark.value = window.matchMedia('(prefers-color-scheme: dark)').matches;
     }
     
-    // 應用初始主題
-    applyTheme();
+    // 同步組件狀態與實際的 DOM 狀態
+    // 因為 HTML 已經在載入時設定了正確的 class
+    const htmlElement = document.documentElement;
+    isDark.value = htmlElement.classList.contains('dark');
     
     // 監聽系統主題變化
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
