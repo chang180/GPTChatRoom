@@ -369,13 +369,9 @@ onUnmounted(() => {
         <!-- 聊天室主容器 - 佔滿可用空間，移除頂部間距 -->
         <div class="h-screen flex flex-col">
             <div class="flex-1 flex flex-col bg-white dark:bg-gray-900">
-                <!-- 聊天室標題和控制區域 -->
+                <!-- 控制區域 -->
                 <div class="bg-blue-600 dark:bg-blue-700 text-white p-4 flex justify-between items-center shadow-lg">
                     <div class="flex items-center space-x-4">
-                        <h1 class="text-xl font-semibold">
-                            <i class="fas fa-comments mr-2"></i>
-                            GPT Chat Room
-                        </h1>
                         <!-- 訊息類型選擇 -->
                         <div class="flex bg-blue-500 dark:bg-blue-600 rounded-lg p-1">
                             <button
@@ -510,6 +506,16 @@ onUnmounted(() => {
                                                 {{ message.sender_type === 'gpt' ? 'GPT Assistant' :
                                                    message.sender_type === 'error' ? '系統訊息' :
                                                    message.user.name }}
+                                            </span>
+                                            <!-- 訊息類型標示 -->
+                                            <span v-if="message.sender_type === 'user' && message.message_type" 
+                                                  class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
+                                                  :class="{
+                                                      'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300': message.message_type === 'ai',
+                                                      'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300': message.message_type === 'direct'
+                                                  }">
+                                                <i :class="message.message_type === 'ai' ? 'fas fa-robot mr-1' : 'fas fa-paper-plane mr-1'"></i>
+                                                {{ message.message_type === 'ai' ? 'AI 發問' : '直接發送' }}
                                             </span>
                                             <span class="text-xs text-gray-500 dark:text-gray-400">
                                                 {{ formatDate(message.created_at) }}
