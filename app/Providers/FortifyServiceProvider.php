@@ -38,8 +38,16 @@ class FortifyServiceProvider extends ServiceProvider
         Fortify::authenticateUsing(function (Request $request) {
             $user = \App\Models\User::where('email', $request->email)->first();
 
-            if ($user && \Hash::check($request->password, $user->password)) {
-                return $user;
+            if ($user) {
+                // 檢查密碼是否使用 Bcrypt 算法
+                if (!str_starts_with($user->password, '$2y$')) {
+                    // 如果密碼不是 Bcrypt，返回 null 讓 Fortify 處理錯誤
+                    return null;
+                }
+
+                if (\Hash::check($request->password, $user->password)) {
+                    return $user;
+                }
             }
 
             // 登入失敗，返回 null 讓 Fortify 處理錯誤
