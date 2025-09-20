@@ -14,36 +14,39 @@ class MessageCacheService
     /**
      * 獲取快取的訊息列表
      */
-    public function getCachedMessages(int $page = 1, int $perPage = 30): array
+    public function getCachedMessages(int $page = 1, int $perPage = 30, ?int $chatRoomId = null): array
     {
-        $cacheKey = $this->getCacheKey($page, $perPage);
+        $cacheKey = $this->getCacheKey($page, $perPage, $chatRoomId);
         
-        return Cache::remember($cacheKey, $this->cacheTtl, function () use ($page, $perPage) {
-            return $this->getMessagesFromDatabase($page, $perPage);
+        return Cache::remember($cacheKey, $this->cacheTtl, function () use ($page, $perPage, $chatRoomId) {
+            return $this->getMessagesFromDatabase($page, $perPage, $chatRoomId);
         });
     }
 
     /**
      * 從資料庫獲取訊息
      */
-    protected function getMessagesFromDatabase(int $page = 1, int $perPage = 30): array
+    protected function getMessagesFromDatabase(int $page = 1, int $perPage = 30, ?int $chatRoomId = null): array
     {
         $offset = ($page - 1) * $perPage;
         
-        $messages = Message::with('user')
-            ->latest()
-            ->offset($offset)
-            ->limit($perPage)
-            ->get();
+        $query = Message::with('user')->latest();
+        
+        if ($chatRoomId) {
+            $query->where('chat_room_id', $chatRoomId);
+        }
+        
+        $messages = $query->offset($offset)->limit($perPage)->get();
+        $totalCount = $query->count();
 
         return [
             'messages' => $messages->toArray(),
             'pagination' => [
                 'current_page' => $page,
                 'per_page' => $perPage,
-                'total' => Message::count(),
-                'last_page' => ceil(Message::count() / $perPage),
-                'has_more_pages' => ($page * $perPage) < Message::count(),
+                'total' => $totalCount,
+                'last_page' => ceil($totalCount / $perPage),
+                'has_more_pages' => ($page * $perPage) < $totalCount,
             ]
         ];
     }
@@ -64,9 +67,9 @@ class MessageCacheService
     /**
      * 清除特定頁面的快取
      */
-    public function clearPageCache(int $page, int $perPage = 30): void
+    public function clearPageCache(int $page, int $perPage = 30, ?int $chatRoomId = null): void
     {
-        $cacheKey = $this->getCacheKey($page, $perPage);
+        $cacheKey = $this->getCacheKey($page, $perPage, $chatRoomId);
         Cache::forget($cacheKey);
     }
 
@@ -85,9 +88,10 @@ class MessageCacheService
     /**
      * 獲取快取鍵
      */
-    protected function getCacheKey(int $page, int $perPage): string
+    protected function getCacheKey(int $page, int $perPage, ?int $chatRoomId = null): string
     {
-        return $this->cachePrefix . "page:{$page}:per_page:{$perPage}";
+        $roomSuffix = $chatRoomId ? ":room:{$chatRoomId}" : '';
+        return $this->cachePrefix . "page:{$page}:per_page:{$perPage}{$roomSuffix}";
     }
 
     /**

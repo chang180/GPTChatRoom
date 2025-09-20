@@ -306,19 +306,33 @@ const clearError = () => {
 const clearAllMessages = async () => {
     if (confirm('確定要清除所有聊天記錄嗎？此操作無法復原。')) {
         try {
-            // 這裡可以添加 API 調用來清除服務器端的記錄
-            // 現在先清除客戶端的記錄
-            messages.splice(0, messages.length);
-            Object.assign(pagination, {
-                current_page: 1,
-                last_page: 1,
-                per_page: messagesPerPage.value,
-                total: 0,
-                has_more_pages: false,
-            });
-            triggerUpdate(true);
+            loading.value = true;
+            
+            // 調用 API 清除服務器端的記錄
+            const response = await axios.delete(route('chat.clear'));
+            
+            if (response.data.success) {
+                // 清除客戶端的記錄
+                messages.splice(0, messages.length);
+                Object.assign(pagination, {
+                    current_page: 1,
+                    last_page: 1,
+                    per_page: messagesPerPage.value,
+                    total: 0,
+                    has_more_pages: false,
+                });
+                triggerUpdate(true);
+                
+                // 顯示成功訊息
+                console.log(`✅ ${response.data.message} (已刪除 ${response.data.deleted_count} 條記錄)`);
+            } else {
+                throw new Error(response.data.message || '清除記錄失敗');
+            }
         } catch (error) {
             console.error('清除記錄失敗:', error);
+            alert('清除記錄時發生錯誤，請稍後再試。');
+        } finally {
+            loading.value = false;
         }
     }
 };

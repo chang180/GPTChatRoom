@@ -28,4 +28,7 @@ Route::middleware([
 
     // GPT API streaming message route - 修改為 POST 請求
     Route::post('/chat/send-message-stream', [ChatRoomController::class, 'sendMessageStream'])->name('chat.send-message-stream');
+
+    // 清除聊天室記錄
+    Route::delete('/chat/clear', [ChatRoomController::class, 'clearChatRoom'])->name('chat.clear');
 });

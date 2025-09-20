@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Message;
+use App\Models\ChatRoom;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
@@ -28,13 +29,17 @@ class ChatRoomController extends Controller
             abort(403, 'Unauthorized');
         }
 
+        $user = Auth::user();
+        $chatRoom = ChatRoom::getDefaultForUser($user);
+
         // 使用快取服務載入訊息，提高效能
-        $cachedData = $this->messageCacheService->getCachedMessages(1, 30);
+        $cachedData = $this->messageCacheService->getCachedMessages(1, 30, $chatRoom->id);
 
         return Inertia::render('ChatRoom', [
             'messages' => $cachedData['messages'],
             'pagination' => $cachedData['pagination'],
-            'user' => Auth::user(),
+            'user' => $user,
+            'chatRoom' => $chatRoom,
         ]);
     }
 
@@ -126,9 +131,13 @@ class ChatRoomController extends Controller
             'message' => 'required|string',
         ]);
 
+        $user = Auth::user();
+        $chatRoom = ChatRoom::getDefaultForUser($user);
+
         // 創建新消息，設置 sender_type 為 'user'
         $message = Message::create([
             'user_id' => Auth::id(),
+            'chat_room_id' => $chatRoom->id,
             'text' => $data['message'],
             'sender_type' => 'user',
         ]);
@@ -136,7 +145,7 @@ class ChatRoomController extends Controller
         try {
             $stream = $this->gptService->sendMessageStream($data['message']);
 
-            return response()->stream(function () use ($stream, $message) {
+            return response()->stream(function () use ($stream, $message, $chatRoom) {
                 // 初始化完整回應內容
                 $fullResponse = '';
 
@@ -157,6 +166,7 @@ class ChatRoomController extends Controller
                 // 保存完整回應到數據庫
                 $gptMessage = Message::create([
                     'user_id' => Auth::id(),
+                    'chat_room_id' => $chatRoom->id,
                     'text' => $fullResponse,
                     'sender_type' => 'gpt',
                 ]);
@@ -175,11 +185,47 @@ class ChatRoomController extends Controller
 
             $errorMsg = Message::create([
                 'user_id' => Auth::id(),
+                'chat_room_id' => $chatRoom->id,
                 'text' => $errorMessage,
                 'sender_type' => 'error',
             ]);
 
             return response()->json(['error' => $errorMessage], 500);
+        }
+    }
+
+    /**
+     * 清除聊天室的所有訊息記錄
+     */
+    public function clearChatRoom(Request $request)
+    {
+        // 確保用戶已認證
+        if (!Auth::check()) {
+            abort(403, 'Unauthorized');
+        }
+
+        $user = Auth::user();
+        $chatRoom = ChatRoom::getDefaultForUser($user);
+
+        try {
+            // 刪除該聊天室的所有訊息
+            $deletedCount = Message::where('chat_room_id', $chatRoom->id)->delete();
+
+            // 清除快取
+            $this->messageCacheService->invalidateCacheOnNewMessage();
+
+            return response()->json([
+                'success' => true,
+                'message' => '聊天室記錄已清除',
+                'deleted_count' => $deletedCount,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Clear chat room error', ['error' => $e->getMessage()]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => '清除聊天室記錄時發生錯誤',
+            ], 500);
         }
     }
 }
