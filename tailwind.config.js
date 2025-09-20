@@ -12,6 +12,8 @@ export default {
         './resources/js/**/*.vue',
     ],
 
+    darkMode: 'class', // 啟用 class 模式的 dark mode
+
     theme: {
         extend: {
             fontFamily: {
