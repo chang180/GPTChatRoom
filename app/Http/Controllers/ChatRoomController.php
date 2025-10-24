@@ -39,6 +39,16 @@ class ChatRoomController extends Controller
         if (!$chatRoom) {
             $chatRoom = ChatRoom::getGlobalTheme('work');
         }
+        
+        // 如果沒有找到任何聊天室，創建一個預設聊天室
+        if (!$chatRoom) {
+            $chatRoom = ChatRoom::getDefaultForUser($user);
+        }
+        
+        // 如果沒有找到任何聊天室，創建一個預設聊天室
+        if (!$chatRoom) {
+            $chatRoom = ChatRoom::getDefaultForUser($user);
+        }
 
         // 獲取所有主題聊天室列表
         $themes = ChatRoom::getGlobalThemes();
@@ -97,6 +107,11 @@ class ChatRoomController extends Controller
         
         if (!$chatRoom) {
             $chatRoom = ChatRoom::getGlobalTheme('work');
+        }
+        
+        // 如果沒有找到任何聊天室，創建一個預設聊天室
+        if (!$chatRoom) {
+            $chatRoom = ChatRoom::getDefaultForUser($user);
         }
 
         // 創建新消息，設置 sender_type 為 'user'
@@ -180,6 +195,11 @@ class ChatRoomController extends Controller
         
         if (!$chatRoom) {
             $chatRoom = ChatRoom::getGlobalTheme('work');
+        }
+        
+        // 如果沒有找到任何聊天室，創建一個預設聊天室
+        if (!$chatRoom) {
+            $chatRoom = ChatRoom::getDefaultForUser($user);
         }
 
         // 創建新消息，設置 sender_type 為 'user'
