@@ -44,6 +44,10 @@ const isActiveTheme = (themeSlug) => {
     return currentChatRoom.value && currentChatRoom.value.slug === themeSlug;
 };
 
+const canClearCurrentChatRoom = computed(() => {
+    return currentChatRoom.value ? !themes.value.some((theme) => theme.id === currentChatRoom.value.id) : false;
+});
+
 // 新增的功能變數
 const messageType = ref('ai'); // 'ai' 或 'direct'
 const messagesPerPage = ref(30);
@@ -448,6 +452,11 @@ const clearError = () => {
 
 // 清除所有聊天記錄
 const clearAllMessages = async () => {
+    if (!canClearCurrentChatRoom.value) {
+        alert('目前不允許清空全域主題聊天室。');
+        return;
+    }
+
     const roomName = currentChatRoom.value?.name || '當前聊天室';
     if (confirm(`確定要清除「${roomName}」的所有聊天記錄嗎？此操作無法復原。`)) {
         try {
@@ -644,11 +653,17 @@ watch(() => props.currentChatRoom?.id, (newRoomId, oldRoomId) => {
                             </select>
                         </div>
                         
-                        <!-- 清除聊天記錄按鈕 -->
+        <!-- 清除聊天記錄按鈕 -->
                         <button
                             @click="clearAllMessages"
-                            class="px-3 py-1 bg-red-500 hover:bg-red-600 text-white text-sm rounded-md transition-colors duration-200"
-                            title="清除所有聊天記錄"
+                            :disabled="!canClearCurrentChatRoom"
+                            :class="[
+                                'px-3 py-1 text-white text-sm rounded-md transition-colors duration-200',
+                                canClearCurrentChatRoom
+                                    ? 'bg-red-500 hover:bg-red-600'
+                                    : 'bg-red-300 cursor-not-allowed'
+                            ]"
+                            :title="canClearCurrentChatRoom ? '清除所有聊天記錄' : '全域主題聊天室目前不開放清空'"
                         >
                             <i class="fas fa-trash-alt mr-1"></i>
                             清除記錄

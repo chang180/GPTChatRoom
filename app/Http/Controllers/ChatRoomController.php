@@ -5,19 +5,20 @@ namespace App\Http\Controllers;
 use App\Events\AiReplyCompleted;
 use App\Events\ChatMessageCreated;
 use App\Events\ChatRoomCleared;
-use App\Models\Message;
 use App\Models\ChatRoom;
+use App\Models\Message;
 use App\Models\User;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Inertia\Inertia;
 use App\Services\GPTService;
 use App\Services\MessageCacheService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Inertia\Inertia;
 
 class ChatRoomController extends Controller
 {
     protected $gptService;
+
     protected $messageCacheService;
 
     public function __construct(GPTService $gptService, MessageCacheService $messageCacheService)
@@ -29,7 +30,7 @@ class ChatRoomController extends Controller
     public function index(Request $request)
     {
         // 確保用戶已認證
-        if (!Auth::check()) {
+        if (! Auth::check()) {
             abort(403, 'Unauthorized');
         }
 
@@ -57,7 +58,7 @@ class ChatRoomController extends Controller
     public function loadMoreMessages(Request $request)
     {
         // 確保用戶已認證
-        if (!Auth::check()) {
+        if (! Auth::check()) {
             abort(403, 'Unauthorized');
         }
 
@@ -72,11 +73,10 @@ class ChatRoomController extends Controller
         return response()->json($cachedData);
     }
 
-
     public function sendMessage(Request $request)
     {
         // 確保用戶已認證
-        if (!Auth::check()) {
+        if (! Auth::check()) {
             abort(403, 'Unauthorized');
         }
 
@@ -159,13 +159,12 @@ class ChatRoomController extends Controller
     /**
      * 發送消息並以流式方式返回響應
      *
-     * @param Request $request
      * @return \Illuminate\Http\Response
      */
     public function sendMessageStream(Request $request)
     {
         // 確保用戶已認證
-        if (!Auth::check()) {
+        if (! Auth::check()) {
             abort(403, 'Unauthorized');
         }
 
@@ -200,14 +199,14 @@ class ChatRoomController extends Controller
                 $fullResponse = '';
 
                 // 發送消息 ID，以便前端識別
-                echo "data: " . json_encode(['messageId' => $message->id]) . "\n\n";
+                echo 'data: '.json_encode(['messageId' => $message->id])."\n\n";
 
                 // 流式處理每個部分的響應
                 foreach ($stream as $response) {
                     $content = $response->choices[0]->delta->content;
                     if ($content !== null) {
                         $fullResponse .= $content;
-                        echo "data: " . json_encode(['content' => $content]) . "\n\n";
+                        echo 'data: '.json_encode(['content' => $content])."\n\n";
                         ob_flush();
                         flush();
                     }
@@ -227,7 +226,7 @@ class ChatRoomController extends Controller
                 broadcast(new AiReplyCompleted($gptMessage))->toOthers();
 
                 // 發送完成信號
-                echo "data: " . json_encode(['done' => true, 'messageId' => $gptMessage->id]) . "\n\n";
+                echo 'data: '.json_encode(['done' => true, 'messageId' => $gptMessage->id])."\n\n";
             }, 200, [
                 'Cache-Control' => 'no-cache',
                 'Content-Type' => 'text/event-stream',
@@ -258,18 +257,25 @@ class ChatRoomController extends Controller
     public function clearChatRoom(Request $request)
     {
         // 確保用戶已認證
-        if (!Auth::check()) {
+        if (! Auth::check()) {
             abort(403, 'Unauthorized');
         }
 
         $user = Auth::user();
         $chatRoom = $this->resolveChatRoom($request, $user, $request->input('theme'));
-        
-        if (!$chatRoom) {
+
+        if (! $chatRoom) {
             return response()->json([
                 'success' => false,
                 'message' => '聊天室不存在',
             ], 404);
+        }
+
+        if (! $this->canClearChatRoom($user, $chatRoom)) {
+            return response()->json([
+                'success' => false,
+                'message' => '目前不允許清空全域主題聊天室，後續會在權限模型明確後再開放。',
+            ], 403);
         }
 
         try {
@@ -288,7 +294,7 @@ class ChatRoomController extends Controller
             ]);
         } catch (\Exception $e) {
             Log::error('Clear chat room error', ['error' => $e->getMessage()]);
-            
+
             return response()->json([
                 'success' => false,
                 'message' => '清除聊天室記錄時發生錯誤',
@@ -300,7 +306,13 @@ class ChatRoomController extends Controller
     {
         $resolvedTheme = $theme ?? $request->route('theme') ?? $request->get('theme', 'work');
 
-        return ChatRoom::getGlobalTheme($resolvedTheme)
+        return ChatRoom::query()
+            ->where('slug', $resolvedTheme)
+            ->where(function ($query) use ($user) {
+                $query->whereNull('user_id')
+                    ->orWhere('user_id', $user->id);
+            })
+            ->first()
             ?? ChatRoom::getGlobalTheme('work')
             ?? ChatRoom::getDefaultForUser($user);
     }
@@ -322,5 +334,14 @@ class ChatRoomController extends Controller
             })
             ->values()
             ->all();
+    }
+
+    protected function canClearChatRoom(User $user, ChatRoom $chatRoom): bool
+    {
+        if ($chatRoom->isGlobalTheme()) {
+            return false;
+        }
+
+        return (int) $chatRoom->user_id === (int) $user->id;
     }
 }

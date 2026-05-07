@@ -5,16 +5,17 @@ use App\Events\ChatMessageCreated;
 use App\Events\ChatRoomCleared;
 use App\Models\ChatRoom;
 use App\Models\Message;
-use App\Services\GPTService;
 use App\Models\User;
+use App\Services\GPTService;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Session;
+use Inertia\Testing\AssertableInertia as Assert;
+
 use function Pest\Laravel\actingAs;
 use function Pest\Laravel\get;
 use function Pest\Laravel\getJson;
 use function Pest\Laravel\post;
-use Inertia\Testing\AssertableInertia as Assert;
 
 it('shows the chat room page', function () {
     // Create a test user
@@ -92,9 +93,9 @@ it('sends a message and receives a response', function () {
             'sender_type',
             'created_at',
             'updated_at',
-            'id'
+            'id',
         ],
-        'gptResponse'
+        'gptResponse',
     ]);
 
     // Assert the message is saved in the database
@@ -280,7 +281,7 @@ it('dispatches broadcast events for ai messages and final replies', function () 
     });
 });
 
-it('dispatches a broadcast event when clearing a chat room', function () {
+it('forbids clearing a global theme chat room', function () {
     /** @var Authenticatable $user */
     $user = User::factory()->create();
 
@@ -294,13 +295,51 @@ it('dispatches a broadcast event when clearing a chat room', function () {
         'sender_type' => 'user',
     ]);
 
+    actingAs($user);
+    Session::start();
+
+    $response = $this->delete(route('chat.clear'), [
+        'theme' => 'work',
+        '_token' => csrf_token(),
+    ]);
+
+    $response->assertStatus(403)
+        ->assertJson([
+            'success' => false,
+        ]);
+
+    $this->assertDatabaseHas('messages', [
+        'chat_room_id' => $workRoom->id,
+        'text' => 'Message to clear',
+    ]);
+});
+
+it('dispatches a broadcast event when clearing an owned chat room', function () {
+    /** @var Authenticatable $user */
+    $user = User::factory()->create();
+
+    $ownedRoom = ChatRoom::create([
+        'user_id' => $user->id,
+        'slug' => 'private-lab',
+        'name' => '私人聊天室',
+        'description' => 'Owned room',
+        'is_active' => true,
+    ]);
+
+    Message::create([
+        'user_id' => $user->id,
+        'chat_room_id' => $ownedRoom->id,
+        'text' => 'Message to clear',
+        'sender_type' => 'user',
+    ]);
+
     Event::fake([ChatRoomCleared::class]);
 
     actingAs($user);
     Session::start();
 
     $response = $this->delete(route('chat.clear'), [
-        'theme' => 'work',
+        'theme' => 'private-lab',
         '_token' => csrf_token(),
     ]);
 
@@ -311,12 +350,12 @@ it('dispatches a broadcast event when clearing a chat room', function () {
         ]);
 
     $this->assertDatabaseMissing('messages', [
-        'chat_room_id' => $workRoom->id,
+        'chat_room_id' => $ownedRoom->id,
         'text' => 'Message to clear',
     ]);
 
-    Event::assertDispatched(ChatRoomCleared::class, function (ChatRoomCleared $event) use ($workRoom) {
-        return $event->chatRoomId === $workRoom->id
+    Event::assertDispatched(ChatRoomCleared::class, function (ChatRoomCleared $event) use ($ownedRoom) {
+        return $event->chatRoomId === $ownedRoom->id
             && $event->deletedCount === 1;
     });
 });
