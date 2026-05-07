@@ -1,226 +1,85 @@
-# GPT Chat Room 🤖💬
+# GPT Chat Room
 
-<p align="center">
-    <img src="public/images/gptchatroom_illustration.webp" width="400" alt="GPT Chat Room Illustration">
-</p>
+Laravel 12 + Inertia.js + Vue 3 的聊天學習專案，目標是整理出一個具備多聊天室、AI 問答、訊息歷史與後續即時同步能力的完整實作。
 
-<p align="center">
-    <img src="https://img.shields.io/badge/Laravel-12.0-red?style=flat-square&logo=laravel" alt="Laravel Version">
-    <img src="https://img.shields.io/badge/Vue.js-3.3-green?style=flat-square&logo=vue.js" alt="Vue.js Version">
-    <img src="https://img.shields.io/badge/OpenAI-GPT--5--nano-blue?style=flat-square&logo=openai" alt="OpenAI GPT">
-    <img src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square" alt="License">
-</p>
+## 目前狀態
 
-## 📖 關於專案
+- 已完成登入後聊天流程
+- 已完成 4 個固定主題聊天室：`work`、`study`、`creative`、`daily`
+- 已完成訊息持久化、歷史載入、聊天室清除
+- 已完成 OpenAI 串流回應
+- 已完成房間內最近訊息的 AI 上下文帶入
+- 已完成 Ably WebSocket Phase 1
+- 目前 AI 串流使用 `SSE`，房間級即時同步使用 Ably
 
-GPT Chat Room 是一個現代化的即時聊天應用程式，讓使用者可以與 OpenAI 的 GPT-5-nano 模型進行對話。本專案採用 Laravel + Vue.js + Inertia.js 的全端解決方案，提供流暢、響應式的聊天體驗。
+## 技術棧
 
-### ✨ 主要特色
+- Backend: Laravel 12, Jetstream, Sanctum, OpenAI PHP SDK
+- Frontend: Vue 3, Inertia.js, Vite, Tailwind CSS
+- Database: SQLite
+- Cache: Laravel Cache
+- Test: Pest
 
-- 🤖 **AI 聊天**: 與 OpenAI GPT-5-nano 進行智能對話
-- 💬 **多聊天室系統**: 4個主題聊天室（工作、學習、創意、日常）
-- 🔄 **即時聊天**: 流暢的對話體驗，支援 Markdown 格式回應
-- 📝 **訊息分類**: 支援「直接發送」和「AI 發問」兩種訊息類型
-- 🔐 **完整認證**: Laravel Jetstream 提供使用者註冊、登入、雙因子認證
-- 🌙 **Dark Mode**: 完整的暗黑模式支援
-- 📱 **響應式設計**: 適配桌面和行動裝置
-- 💾 **訊息歷史**: 自動儲存和載入聊天記錄
-- 🎨 **現代化 UI**: 使用 Tailwind CSS 打造美觀介面
-- ⚡ **SPA 體驗**: Inertia.js 提供單頁應用程式體驗
+## 核心功能
 
-## 🛠️ 技術堆疊
+- 多聊天室切換
+- 兩種送出模式：`direct`、`ai_query`
+- GPT 串流回覆
+- Markdown 訊息顯示
+- 認證、Email 驗證、2FA
+- 訊息分頁與快取
 
-### 後端
-- **Laravel 12.0** - PHP 框架
-- **Laravel Jetstream** - 認證與團隊管理
-- **Laravel Sanctum** - API 認證
-- **SQLite** - 資料庫
-- **OpenAI PHP SDK** - AI 服務整合
+## 專案文件
 
-### 前端
-- **Vue.js 3.3** - 前端框架
-- **Inertia.js 2.0** - 現代化的單頁應用
-- **Tailwind CSS 3.4** - CSS 框架
-- **Vite 6.2** - 建構工具
-- **Marked.js** - Markdown 渲染
+- 開發文件入口：[`docs/README.md`](docs/README.md)
+- 專案架構：[`docs/architecture.md`](docs/architecture.md)
+- 即時通訊與 WebSocket 規劃：[`docs/realtime-websocket-plan.md`](docs/realtime-websocket-plan.md)
+- 下一階段清單：[`docs/phase-2-checklist.md`](docs/phase-2-checklist.md)
+- AI 開發備忘：[`.ai-dev/README.md`](.ai-dev/README.md)
 
-### 開發工具
-- **Laravel Nightwatch** - 監控與日誌
-- **Pest** - 測試框架
-- **Laravel Pint** - 程式碼格式化
+## 快速開始
 
-## 📋 系統需求
-
-- PHP 8.2 或更高版本
-- Node.js 18 或更高版本
-- Composer
-- npm 或 yarn
-
-## 🚀 安裝與設定
-
-### 1. 複製專案
-```bash
-git clone https://github.com/chang180/GPTChatRoom.git
-cd GPTChatRoom
-```
-
-### 2. 安裝後端依賴
 ```bash
 composer install
-```
-
-### 3. 安裝前端依賴
-```bash
 npm install
-```
-
-### 4. 環境設定
-```bash
 cp .env.example .env
 php artisan key:generate
-```
-
-### 5. 配置 OpenAI API
-在 `.env` 檔案中設定您的 OpenAI API 金鑰：
-```env
-OPENAI_API_KEY=your_openai_api_key_here
-OPENAI_ORGANIZATION=your_organization_id_here
-```
-
-### 6. 資料庫設定
-```bash
+touch database/database.sqlite
 php artisan migrate
-```
-
-### 7. 建構前端資源
-```bash
-npm run build
-# 或開發模式
 npm run dev
-```
-
-### 8. 啟動應用程式
-```bash
 php artisan serve
 ```
 
-## 📱 使用方式
+在 `.env` 設定：
 
-1. **註冊帳號** - 前往註冊頁面建立新帳號
-2. **登入系統** - 使用您的帳號登入
-3. **選擇聊天室** - 點擊導航列的 "ChatRoom" 進入聊天室，選擇主題頁籤
-4. **開始聊天** - 選擇「AI 發問」與 GPT 對話，或選擇「直接發送」發送一般訊息
-5. **享受對話** - 在不同主題聊天室中享受 AI 助手的智能回應
-
-## 🏗️ 專案架構
-
-
-```
-GPTChatRoom/
-├── app/
-│   ├── Http/Controllers/
-│   │   ├── ChatRoomController.php    # 聊天室控制器（支援多聊天室）
-│   │   └── HomeController.php        # 首頁控制器
-│   ├── Models/
-│   │   ├── User.php                  # 使用者模型
-│   │   ├── Message.php               # 訊息模型（關聯聊天室）
-│   │   └── ChatRoom.php              # 聊天室模型
-│   └── Services/
-│       ├── GPTService.php            # GPT API 服務
-│       └── MessageCacheService.php   # 訊息快取服務
-├── resources/
-│   ├── js/Pages/
-│   │   ├── ChatRoom.vue              # 聊天室頁面（多頁籤支援）
-│   │   └── Dashboard.vue             # 儀表板
-│   └── css/
-│       └── app.css                   # 主要樣式（支援 Dark Mode）
-├── database/
-│   ├── migrations/                   # 資料庫遷移檔案
-│   └── database.sqlite               # SQLite 資料庫
-└── routes/
-    └── web.php                       # 網頁路由（支援主題路由）
+```env
+OPENAI_API_KEY=your_openai_api_key
+OPENAI_ORGANIZATION=your_openai_organization
+BROADCAST_CONNECTION=ably
+ABLY_KEY=your_ably_key
+ABLY_TOKEN_EXPIRY=3600
+VITE_ABLY_ENABLED=true
 ```
 
-## 🎯 主要功能
+## 開發指令
 
-### 多聊天室系統
-- **4個主題聊天室**：工作、學習、創意、日常
-- **全局共享**：所有用戶共享相同的聊天室
-- **頁籤切換**：流暢的聊天室切換體驗
-- **訊息分類**：支援直接發送和 AI 發問
-
-### 聊天系統
-- 與 GPT-5-nano 進行對話
-- 支援 Markdown 格式回應
-- 自動儲存聊天歷史
-- 即時載入狀態提示
-- 聊天室特定記錄清除
-
-### 使用者管理
-- 使用者註冊與登入
-- 雙因子認證（2FA）
-- 個人資料管理
-- 安全的 Session 管理
-
-### 介面特色
-- 全螢幕聊天體驗
-- 響應式設計
-- 現代化 UI/UX
-- 快速載入與流暢動畫
-- Dark Mode 支援
-- FontAwesome 圖示整合
-
-## 🔧 開發指南
-
-### 本地開發
 ```bash
-# 啟動後端伺服器
 php artisan serve
-
-# 啟動前端建構（開發模式）
 npm run dev
-```
-
-### 測試
-```bash
-# 執行測試
 php artisan test
-```
-
-### 程式碼格式化
-```bash
-# 格式化 PHP 程式碼
 ./vendor/bin/pint
 ```
 
-## 🤝 貢獻
+## 目前架構重點
 
-歡迎貢獻！請先 fork 此專案，建立您的功能分支，並提交 Pull Request。
+- 路由集中在 `routes/web.php`
+- 聊天流程由 `app/Http/Controllers/ChatRoomController.php` 主導
+- OpenAI 呼叫封裝在 `app/Services/GPTService.php`
+- 訊息分頁與快取邏輯在 `app/Services/MessageCacheService.php`
+- 前端聊天頁在 `resources/js/Pages/ChatRoom.vue`
 
-1. Fork 專案
-2. 建立功能分支 (`git checkout -b feature/AmazingFeature`)
-3. 提交變更 (`git commit -m 'Add some AmazingFeature'`)
-4. 推送到分支 (`git push origin feature/AmazingFeature`)
-5. 開啟 Pull Request
+## 後續重點
 
-## 📄 授權條款
+目前專案已完成第一階段房間級即時同步。現況是保留 SSE 作為 AI 串流方案，另外使用 Ably 廣播同步「使用者新訊息、AI 最終訊息、聊天室清除」。
 
-本專案採用 MIT 授權條款。詳細資訊請參閱 [LICENSE](LICENSE) 檔案。
-
-## 📞 聯絡資訊
-
-- 專案連結: [https://github.com/chang180/GPTChatRoom](https://github.com/chang180/GPTChatRoom)
-- 問題回報: [GitHub Issues](https://github.com/chang180/GPTChatRoom/issues)
-
-## 🙏 致謝
-
-- [Laravel](https://laravel.com) - 強大的 PHP 框架
-- [Vue.js](https://vuejs.org) - 漸進式 JavaScript 框架
-- [OpenAI](https://openai.com) - AI 技術支援
-- [Tailwind CSS](https://tailwindcss.com) - 實用優先的 CSS 框架
-
----
-
-<p align="center">
-    Made with ❤️ by <a href="https://github.com/chang180">chang180</a>
-</p>
+細節請看 [`docs/realtime-websocket-plan.md`](docs/realtime-websocket-plan.md)。

@@ -8,6 +8,25 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ChatRoom extends Model
 {
+    public const GLOBAL_THEME_DEFINITIONS = [
+        'work' => [
+            'name' => '工作',
+            'description' => '工作相關的討論和任務',
+        ],
+        'study' => [
+            'name' => '學習',
+            'description' => '學習和知識分享',
+        ],
+        'creative' => [
+            'name' => '創意',
+            'description' => '創意發想和靈感交流',
+        ],
+        'daily' => [
+            'name' => '日常',
+            'description' => '日常對話和閒聊',
+        ],
+    ];
+
     protected $fillable = [
         'name',
         'slug',
@@ -50,7 +69,7 @@ class ChatRoom extends Model
      */
     public static function getGlobalThemes(): array
     {
-        return static::whereIn('slug', ['work', 'study', 'creative', 'daily'])
+        return static::whereIn('slug', array_keys(self::GLOBAL_THEME_DEFINITIONS))
             ->orderByRaw("CASE slug WHEN 'work' THEN 1 WHEN 'study' THEN 2 WHEN 'creative' THEN 3 WHEN 'daily' THEN 4 END")
             ->get()
             ->toArray();
@@ -65,11 +84,26 @@ class ChatRoom extends Model
             ->first();
     }
 
+    public static function ensureGlobalThemes(): void
+    {
+        foreach (self::GLOBAL_THEME_DEFINITIONS as $slug => $theme) {
+            static::firstOrCreate(
+                ['slug' => $slug],
+                [
+                    'name' => $theme['name'],
+                    'description' => $theme['description'],
+                    'user_id' => null,
+                    'is_active' => true,
+                ]
+            );
+        }
+    }
+
     /**
      * Check if a chat room is a global theme
      */
     public function isGlobalTheme(): bool
     {
-        return in_array($this->slug, ['work', 'study', 'creative', 'daily']);
+        return array_key_exists($this->slug, self::GLOBAL_THEME_DEFINITIONS);
     }
 }

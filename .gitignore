@@ -22,3 +22,12 @@ yarn-error.log
 # Laravel IDE Helper files
 _ide_helper.php
 _ide_helper_models.php
+
+# SSL certificates for local HTTPS development
+docker/nginx/ssl/*.pem
+
+# Local development files
+.claude/settings.local.json
+
+# Docker volumes and local data
+docker/nginx/logs/

@@ -29,7 +29,6 @@ return new class extends Migration
             'chat_room_id' => $workRoom->id
         ]);
 
-        echo "Reassigned all messages to work chat room (ID: {$workRoom->id})\n";
     }
 
     /**
@@ -38,6 +37,5 @@ return new class extends Migration
     public function down(): void
     {
         // 這個 migration 沒有可逆操作，因為我們不知道原始分配
-        echo "This migration cannot be reversed\n";
     }
 };
