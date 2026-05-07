@@ -30,25 +30,7 @@ class ChatRoomController extends Controller
         }
 
         $user = Auth::user();
-        
-        // 獲取指定的聊天室，默認為第一個主題聊天室
-        $theme = $request->route('theme') ?? $request->get('theme', 'work');
-        $chatRoom = ChatRoom::getGlobalTheme($theme);
-        
-        // 如果指定的主題不存在，使用工作聊天室
-        if (!$chatRoom) {
-            $chatRoom = ChatRoom::getGlobalTheme('work');
-        }
-        
-        // 如果沒有找到任何聊天室，創建一個預設聊天室
-        if (!$chatRoom) {
-            $chatRoom = ChatRoom::getDefaultForUser($user);
-        }
-        
-        // 如果沒有找到任何聊天室，創建一個預設聊天室
-        if (!$chatRoom) {
-            $chatRoom = ChatRoom::getDefaultForUser($user);
-        }
+        $chatRoom = $this->resolveChatRoom($request, $user);
 
         // 獲取所有主題聊天室列表
         $themes = ChatRoom::getGlobalThemes();
@@ -75,11 +57,13 @@ class ChatRoomController extends Controller
             abort(403, 'Unauthorized');
         }
 
+        $user = Auth::user();
         $page = $request->get('page', 1);
         $perPage = $request->get('per_page', 30);
+        $chatRoom = $this->resolveChatRoom($request, $user);
 
         // 使用快取服務載入更多訊息
-        $cachedData = $this->messageCacheService->getCachedMessages($page, $perPage);
+        $cachedData = $this->messageCacheService->getCachedMessages($page, $perPage, $chatRoom->id);
 
         return response()->json($cachedData);
     }
@@ -100,19 +84,7 @@ class ChatRoomController extends Controller
         ]);
 
         $user = Auth::user();
-        
-        // 獲取指定的聊天室，優先從請求數據中獲取，然後從路由參數
-        $theme = $data['theme'] ?? $request->route('theme') ?? $request->get('theme', 'work');
-        $chatRoom = ChatRoom::getGlobalTheme($theme);
-        
-        if (!$chatRoom) {
-            $chatRoom = ChatRoom::getGlobalTheme('work');
-        }
-        
-        // 如果沒有找到任何聊天室，創建一個預設聊天室
-        if (!$chatRoom) {
-            $chatRoom = ChatRoom::getDefaultForUser($user);
-        }
+        $chatRoom = $this->resolveChatRoom($request, $user, $data['theme'] ?? null);
 
         // 創建新消息，設置 sender_type 為 'user'
         $message = Message::create([
@@ -158,7 +130,7 @@ class ChatRoomController extends Controller
                 'user_id' => Auth::id(),
                 'chat_room_id' => $chatRoom->id,
                 'text' => $errorMessage,
-                'sender_type' => 'gpt', // 假設錯誤消息也來自 GPT
+                'sender_type' => 'error',
             ]);
 
             // 清除快取，因為有新訊息（即使是錯誤訊息）
@@ -188,19 +160,7 @@ class ChatRoomController extends Controller
         ]);
 
         $user = Auth::user();
-        
-        // 獲取指定的聊天室，優先從請求數據中獲取，然後從路由參數
-        $theme = $data['theme'] ?? $request->route('theme') ?? $request->get('theme', 'work');
-        $chatRoom = ChatRoom::getGlobalTheme($theme);
-        
-        if (!$chatRoom) {
-            $chatRoom = ChatRoom::getGlobalTheme('work');
-        }
-        
-        // 如果沒有找到任何聊天室，創建一個預設聊天室
-        if (!$chatRoom) {
-            $chatRoom = ChatRoom::getDefaultForUser($user);
-        }
+        $chatRoom = $this->resolveChatRoom($request, $user, $data['theme'] ?? null);
 
         // 創建新消息，設置 sender_type 為 'user'
         $message = Message::create([
@@ -209,6 +169,9 @@ class ChatRoomController extends Controller
             'text' => $data['message'],
             'sender_type' => 'user',
         ]);
+
+        // 先清除第一頁快取，避免串流期間重新整理看不到使用者剛送出的訊息
+        $this->messageCacheService->invalidateCacheOnNewMessage($chatRoom->id);
 
         try {
             $stream = $this->gptService->sendMessageStream($data['message']);
@@ -254,7 +217,7 @@ class ChatRoomController extends Controller
             Log::error('Stream error', ['error' => $e->getMessage()]);
             $errorMessage = $e->getMessage();
 
-            $errorMsg = Message::create([
+            Message::create([
                 'user_id' => Auth::id(),
                 'chat_room_id' => $chatRoom->id,
                 'text' => $errorMessage,
@@ -279,10 +242,7 @@ class ChatRoomController extends Controller
         }
 
         $user = Auth::user();
-        
-        // 獲取指定的聊天室，優先從請求數據中獲取
-        $theme = $request->input('theme', 'work');
-        $chatRoom = ChatRoom::getGlobalTheme($theme);
+        $chatRoom = $this->resolveChatRoom($request, $user, $request->input('theme'));
         
         if (!$chatRoom) {
             return response()->json([
@@ -311,5 +271,14 @@ class ChatRoomController extends Controller
                 'message' => '清除聊天室記錄時發生錯誤',
             ], 500);
         }
+    }
+
+    protected function resolveChatRoom(Request $request, $user, ?string $theme = null): ChatRoom
+    {
+        $resolvedTheme = $theme ?? $request->route('theme') ?? $request->get('theme', 'work');
+
+        return ChatRoom::getGlobalTheme($resolvedTheme)
+            ?? ChatRoom::getGlobalTheme('work')
+            ?? ChatRoom::getDefaultForUser($user);
     }
 }

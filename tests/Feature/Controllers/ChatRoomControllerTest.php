@@ -1,10 +1,13 @@
 <?php
 
+use App\Models\ChatRoom;
+use App\Services\GPTService;
 use App\Models\User;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Support\Facades\Session;
 use function Pest\Laravel\actingAs;
 use function Pest\Laravel\get;
+use function Pest\Laravel\getJson;
 use function Pest\Laravel\post;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -42,6 +45,28 @@ it('sends a message and receives a response', function () {
     // Act as the test user
     actingAs($user);
 
+    ChatRoom::create([
+        'name' => '工作',
+        'slug' => 'work',
+        'description' => '工作相關的討論和任務',
+        'is_active' => true,
+    ]);
+
+    $mock = \Mockery::mock(GPTService::class);
+    $mock->shouldReceive('sendMessage')
+        ->once()
+        ->with('Hello, GPT!')
+        ->andReturn([
+            'choices' => [
+                [
+                    'message' => [
+                        'content' => 'Mocked GPT response',
+                    ],
+                ],
+            ],
+        ]);
+    $this->app->instance(GPTService::class, $mock);
+
     // Generate a CSRF token
     Session::start();
     $csrfToken = csrf_token();
@@ -76,8 +101,52 @@ it('sends a message and receives a response', function () {
     // Assert the GPT response is saved in the database
     $this->assertDatabaseHas('messages', [
         'user_id' => $user->id,
-        'text' => $response->json('gptResponse'),
+        'text' => 'Mocked GPT response',
         'sender_type' => 'gpt',
     ]);
 });
 
+it('loads more messages for the current theme only', function () {
+    /** @var Authenticatable $user */
+    $user = User::factory()->create();
+
+    $workRoom = ChatRoom::create([
+        'name' => '工作',
+        'slug' => 'work',
+        'description' => '工作相關的討論和任務',
+        'is_active' => true,
+    ]);
+
+    $studyRoom = ChatRoom::create([
+        'name' => '學習',
+        'slug' => 'study',
+        'description' => '學習和知識分享',
+        'is_active' => true,
+    ]);
+
+    actingAs($user);
+
+    \App\Models\Message::create([
+        'user_id' => $user->id,
+        'chat_room_id' => $workRoom->id,
+        'text' => 'work message',
+        'sender_type' => 'user',
+    ]);
+
+    \App\Models\Message::create([
+        'user_id' => $user->id,
+        'chat_room_id' => $studyRoom->id,
+        'text' => 'study message',
+        'sender_type' => 'user',
+    ]);
+
+    $response = getJson(route('chat.load-more', [
+        'theme' => 'work',
+        'page' => 1,
+        'per_page' => 30,
+    ]));
+
+    $response->assertStatus(200);
+    expect($response->json('messages'))->toHaveCount(1);
+    expect($response->json('messages.0.text'))->toBe('work message');
+});

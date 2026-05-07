@@ -4,7 +4,7 @@ namespace App\Services;
 
 use App\Models\Message;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Cache\RedisStore;
 
 class MessageCacheService
 {
@@ -62,6 +62,10 @@ class MessageCacheService
      */
     public function clearAllCache(): void
     {
+        if (! Cache::getStore() instanceof RedisStore) {
+            return;
+        }
+
         $pattern = $this->cachePrefix . '*';
         $keys = Cache::getRedis()->keys($pattern);
         

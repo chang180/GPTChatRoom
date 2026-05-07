@@ -1,0 +1,193 @@
+# 專案架構
+
+本文件以目前程式碼為準，描述 GPT Chat Room 的實際結構，而不是理想中的最終狀態。
+
+## 1. 技術組成
+
+- Backend: Laravel 12, PHP 8.4
+- Frontend: Vue 3, Inertia.js 2, Vite 6
+- Auth: Laravel Jetstream + Sanctum + Fortify
+- AI: `openai-php/laravel`
+- Database: SQLite
+- Cache: Laravel Cache，專案內已有訊息快取服務
+
+## 2. 目前目錄重點
+
+```text
+app/
+  Http/Controllers/
+    ChatRoomController.php
+    HomeController.php
+  Models/
+    ChatRoom.php
+    Message.php
+    User.php
+  Services/
+    GPTService.php
+    MessageCacheService.php
+resources/
+  js/
+    Layouts/AppLayout.vue
+    Pages/ChatRoom.vue
+    Pages/Dashboard.vue
+    Pages/Welcome.vue
+    bootstrap.js
+routes/
+  web.php
+database/
+  migrations/
+config/
+  openai.php
+docs/
+  README.md
+  architecture.md
+  realtime-websocket-plan.md
+```
+
+## 3. 後端責任分配
+
+### `app/Http/Controllers/ChatRoomController.php`
+
+處理聊天主流程：
+
+- `index()`: 載入聊天室頁面與首批訊息
+- `loadMoreMessages()`: 載入更多歷史訊息
+- `sendMessage()`: 儲存使用者訊息，必要時再同步呼叫 GPT
+- `sendMessageStream()`: 儲存使用者訊息後，以 SSE 串流 GPT 回覆
+- `clearChatRoom()`: 清除指定主題聊天室的全部訊息
+
+### `app/Services/GPTService.php`
+
+負責對 OpenAI 發送請求：
+
+- `sendMessage()`: 一次性回應
+- `sendMessageStream()`: 串流回應
+
+目前模型寫死為 `gpt-5-nano`。
+
+### `app/Services/MessageCacheService.php`
+
+負責訊息查詢快取：
+
+- 以頁碼、每頁筆數、聊天室 ID 組成 cache key
+- 新訊息進來時，只清掉第一頁快取
+- 已有訊息統計與預熱方法，但目前控制器主要使用分頁快取
+
+## 4. 前端責任分配
+
+### `resources/js/Pages/ChatRoom.vue`
+
+目前是聊天核心頁面，主要職責：
+
+- 顯示當前聊天室與歷史訊息
+- 管理 `direct` / `ai` 兩種送出模式
+- 以 `axios` 呼叫聊天 API
+- 用 `onDownloadProgress` 手動解析 SSE 片段
+- 處理無限滾動載入更多歷史訊息
+- 清除聊天室與切換主題聊天室
+
+注意：
+
+- 目前沒有 `Laravel Echo`
+- 目前沒有任何前端 WebSocket client 設定
+- AI 串流是 HTTP response stream，不是 WebSocket
+
+### `resources/js/bootstrap.js`
+
+目前只初始化 `axios`，尚未建立 Echo / Pusher / Ably client。
+
+## 5. 路由
+
+`routes/web.php` 目前聊天相關路由都在登入保護下：
+
+- `GET /chat`
+- `GET /chat/{theme}`
+- `GET /chat/load-more`
+- `POST /chat/send-message`
+- `POST /chat/send-message-stream`
+- `DELETE /chat/clear`
+
+## 6. 資料模型
+
+### `chat_rooms`
+
+用途：
+
+- 存放聊天室定義
+- 目前主要使用 4 個全域主題聊天室
+
+關鍵欄位：
+
+- `id`
+- `name`
+- `slug`
+- `description`
+- `user_id`
+- `is_active`
+
+目前主題聊天室 slug：
+
+- `work`
+- `study`
+- `creative`
+- `daily`
+
+### `messages`
+
+用途：
+
+- 儲存所有聊天訊息
+
+關鍵欄位：
+
+- `id`
+- `user_id`
+- `chat_room_id`
+- `text`
+- `sender_type`
+- `created_at`
+- `updated_at`
+
+`sender_type` 目前可見值：
+
+- `user`
+- `gpt`
+- `error`
+
+## 7. 現在的訊息流程
+
+### 直接訊息
+
+1. 前端呼叫 `POST /chat/send-message`
+2. 後端寫入一筆 `sender_type=user`
+3. 直接回傳成功，不呼叫 GPT
+
+### AI 問答
+
+1. 前端先在畫面插入使用者訊息與空白 GPT 訊息
+2. 前端呼叫 `POST /chat/send-message-stream`
+3. 後端先寫入使用者訊息
+4. 後端呼叫 OpenAI streamed chat
+5. 後端以 SSE `data: ...` 分段輸出內容
+6. 前端累加 GPT 文字
+7. 串流完成後，後端再寫入一筆 `sender_type=gpt`
+
+## 8. 現有設計限制
+
+- 多使用者開同一聊天室時，彼此不會即時看到對方新訊息
+- GPT 串流只回到發送請求的那個瀏覽器
+- `loadMoreMessages()` 目前沒有把聊天室 ID 傳回後端，因此切換主題後的歷史分頁有混房風險
+- `clearChatRoom()` 會清空整個主題聊天室資料，因此目前是全域清除，不是清除個人視角
+- 目前沒有 broadcast event、private channel、presence channel 設計
+
+## 9. 下一步建議
+
+- 保留 SSE 作為 AI token 串流
+- 另外導入 WebSocket 處理房間級即時同步
+- 優先同步的事件：
+  - 使用者新訊息
+  - GPT 完整回覆落庫完成
+  - 聊天室清除
+  - 使用者加入 / 離開房間
+
+詳細方案見 [`realtime-websocket-plan.md`](realtime-websocket-plan.md)。

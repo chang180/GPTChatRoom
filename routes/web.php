@@ -19,7 +19,6 @@ Route::middleware([
 
     // Chat room route
     Route::get('/chat', [ChatRoomController::class, 'index'])->name('chat.index');
-    Route::get('/chat/{theme}', [ChatRoomController::class, 'index'])->name('chat.theme');
     
     // Load more messages for infinite scroll
     Route::get('/chat/load-more', [ChatRoomController::class, 'loadMoreMessages'])->name('chat.load-more');
@@ -32,4 +31,6 @@ Route::middleware([
 
     // 清除聊天室記錄
     Route::delete('/chat/clear', [ChatRoomController::class, 'clearChatRoom'])->name('chat.clear');
+
+    Route::get('/chat/{theme}', [ChatRoomController::class, 'index'])->name('chat.theme');
 });

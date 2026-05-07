@@ -69,7 +69,8 @@ const loadMoreMessages = async () => {
         const response = await axios.get(route('chat.load-more'), {
             params: {
                 page: nextPage,
-                per_page: messagesPerPage.value
+                per_page: messagesPerPage.value,
+                theme: currentChatRoom.value?.slug || 'work',
             }
         });
         
