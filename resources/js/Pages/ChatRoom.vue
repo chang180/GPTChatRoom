@@ -1,6 +1,6 @@
 <script setup>
 import AppLayout from '@/Layouts/AppLayout.vue';
-import { ref, onMounted, onUnmounted, computed, nextTick, watch, toRaw, reactive } from 'vue';
+import { ref, onMounted, onUnmounted, computed, nextTick, watch, reactive } from 'vue';
 import axios from 'axios';
 import { route } from 'ziggy-js';
 import { marked } from 'marked';
@@ -23,6 +23,7 @@ const loading = ref(false);
 const loadingMore = ref(false);
 const error = ref(null);
 const abortController = ref(null);
+const activeBroadcastChannel = ref(null);
 
 // 主題聊天室相關
 const currentChatRoom = ref(props.currentChatRoom);
@@ -54,6 +55,94 @@ const messageIdCounter = ref(0);
 // 生成唯一的消息 ID
 const generateMessageId = () => {
     return `msg_${Date.now()}_${++messageIdCounter.value}`;
+};
+
+const getEcho = () => window.Echo;
+
+const getSocketHeaders = () => {
+    const socketId = getEcho()?.socketId?.();
+
+    return socketId ? { 'X-Socket-ID': socketId } : {};
+};
+
+const upsertMessage = (incomingMessage) => {
+    const existingIndex = messages.findIndex((message) => String(message.id) === String(incomingMessage.id));
+
+    if (existingIndex !== -1) {
+        messages.splice(existingIndex, 1, {
+            ...messages[existingIndex],
+            ...incomingMessage,
+        });
+        return;
+    }
+
+    messages.push(incomingMessage);
+    triggerUpdate();
+};
+
+const replaceMessage = (targetId, nextMessage) => {
+    const messageIndex = messages.findIndex((message) => String(message.id) === String(targetId));
+
+    if (messageIndex === -1) {
+        upsertMessage(nextMessage);
+        return;
+    }
+
+    messages.splice(messageIndex, 1, {
+        ...messages[messageIndex],
+        ...nextMessage,
+    });
+    triggerUpdate();
+};
+
+const subscribeToChatRoom = (chatRoom) => {
+    if (!chatRoom?.id || !getEcho()) {
+        return;
+    }
+
+    const channelName = `chat-room.${chatRoom.id}`;
+    activeBroadcastChannel.value = channelName;
+
+    getEcho()
+        .private(channelName)
+        .listen('.chat.message.created', ({ message }) => {
+            if (message.chat_room_id !== currentChatRoom.value?.id) {
+                return;
+            }
+
+            upsertMessage(message);
+        })
+        .listen('.chat.ai-reply.completed', ({ message }) => {
+            if (message.chat_room_id !== currentChatRoom.value?.id) {
+                return;
+            }
+
+            upsertMessage(message);
+        })
+        .listen('.chat.room.cleared', ({ chat_room_id }) => {
+            if (chat_room_id !== currentChatRoom.value?.id) {
+                return;
+            }
+
+            messages.splice(0, messages.length);
+            Object.assign(pagination, {
+                current_page: 1,
+                last_page: 1,
+                per_page: messagesPerPage.value,
+                total: 0,
+                has_more_pages: false,
+            });
+            triggerUpdate(true);
+        });
+};
+
+const unsubscribeFromChatRoom = (chatRoomId) => {
+    if (!chatRoomId || !getEcho()) {
+        return;
+    }
+
+    getEcho().leave(`chat-room.${chatRoomId}`);
+    activeBroadcastChannel.value = null;
 };
 
 // 載入更多歷史訊息
@@ -135,6 +224,7 @@ const sendMessage = async () => {
             sender_type: 'user',
             message_type: messageType.value, // 記錄訊息類型
         };
+        const optimisticUserMessageId = userMessage.id;
         messages.push(userMessage);
 
         // 觸發更新，確保新消息顯示在最上方
@@ -144,10 +234,16 @@ const sendMessage = async () => {
         if (messageType.value === 'direct') {
             // 發送直接訊息到後端保存
             try {
-                await axios.post(route('chat.send-message'), {
+                const response = await axios.post(route('chat.send-message'), {
                     message: messageContent,
                     theme: currentChatRoom.value?.slug || 'work',
                     message_type: 'direct'
+                }, {
+                    headers: getSocketHeaders(),
+                });
+                replaceMessage(optimisticUserMessageId, {
+                    ...(messages.find((message) => String(message.id) === String(optimisticUserMessageId)) || {}),
+                    ...response.data.message,
                 });
             } catch (error) {
                 console.error('Failed to save direct message:', error);
@@ -171,6 +267,7 @@ const sendMessage = async () => {
             sender_type: 'gpt',
             isStreaming: true,
         };
+        const optimisticGptMessageId = gptMessage.id;
 
         // 將消息添加到響應式數組中，這樣 Vue 可以追蹤變化
         const messageIndex = messages.length;
@@ -196,6 +293,7 @@ const sendMessage = async () => {
                 headers: {
                     'Accept': 'text/event-stream',
                     'Cache-Control': 'no-cache',
+                    ...getSocketHeaders(),
                 },
                 onDownloadProgress: (progressEvent) => {
                     const xhr = progressEvent.event.target;
@@ -214,6 +312,13 @@ const sendMessage = async () => {
                                 const jsonStr = line.substring(6).trim();
                                 const eventData = JSON.parse(jsonStr);
 
+                                if ('messageId' in eventData && !('done' in eventData) && eventData.messageId !== null) {
+                                    replaceMessage(optimisticUserMessageId, {
+                                        ...(messages.find((message) => String(message.id) === String(optimisticUserMessageId)) || {}),
+                                        id: eventData.messageId,
+                                    });
+                                }
+
                                 // 處理內容
                                 if ('content' in eventData && eventData.content !== null) {
                                     // 直接修改響應式數組中的對象，Vue 會檢測到變化
@@ -228,7 +333,11 @@ const sendMessage = async () => {
 
                                 // 處理完成
                                 if (eventData.done) {
-                                    messages[messageIndex].isStreaming = false;
+                                    replaceMessage(optimisticGptMessageId, {
+                                        ...(messages.find((message) => String(message.id) === String(optimisticGptMessageId)) || {}),
+                                        id: eventData.messageId ?? optimisticGptMessageId,
+                                        isStreaming: false,
+                                    });
                                     loading.value = false;
                                     // 只在完成時觸發一次更新
                                     triggerUpdate();
@@ -349,7 +458,8 @@ const clearAllMessages = async () => {
             const response = await axios.delete(route('chat.clear'), {
                 data: {
                     theme: currentChatRoom.value?.slug || 'work'
-                }
+                },
+                headers: getSocketHeaders(),
             });
             
             if (response.data.success) {
@@ -418,6 +528,8 @@ const changeMessagesPerPage = async () => {
 
 // 組件掛載時確保滾動位置正確並添加滾動事件監聽器
 onMounted(() => {
+    subscribeToChatRoom(currentChatRoom.value);
+
     nextTick(() => {
         if (messagesContainer.value) {
             messagesContainer.value.scrollTop = 0;
@@ -438,8 +550,20 @@ onUnmounted(() => {
     if (messagesContainer.value) {
         messagesContainer.value.removeEventListener('scroll', handleScroll);
     }
+
+    unsubscribeFromChatRoom(currentChatRoom.value?.id);
     
     loading.value = false;
+});
+
+watch(() => props.currentChatRoom?.id, (newRoomId, oldRoomId) => {
+    if (oldRoomId && oldRoomId !== newRoomId) {
+        unsubscribeFromChatRoom(oldRoomId);
+    }
+
+    if (newRoomId && newRoomId !== oldRoomId) {
+        subscribeToChatRoom(props.currentChatRoom);
+    }
 });
 </script>
 

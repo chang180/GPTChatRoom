@@ -24,13 +24,12 @@
 - GPT 串流回覆
 - 最近聊天室訊息的 AI 上下文
 - 聊天室清除
+- Ably broadcasting / Echo Phase 1 骨架
 
 ## 本階段尚未完成
 
-- 多使用者同房即時同步
 - 在線狀態 / typing / 已讀等 presence 類功能
-- 廣播事件與前端 Echo 訂閱
-- 與第三方 WebSocket 服務整合
+- Ably app key 與實機驗證
 
 ## 建議閱讀順序
 

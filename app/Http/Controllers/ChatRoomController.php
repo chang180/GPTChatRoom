@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\AiReplyCompleted;
+use App\Events\ChatMessageCreated;
+use App\Events\ChatRoomCleared;
 use App\Models\Message;
 use App\Models\ChatRoom;
 use App\Models\User;
@@ -101,8 +104,13 @@ class ChatRoomController extends Controller
         // 如果是直接發送模式，只保存用戶訊息，不發送給 GPT
         $messageType = $data['message_type'] ?? 'ai_query';
         if ($messageType === 'direct') {
+            broadcast(new ChatMessageCreated($message, 'direct'))->toOthers();
+
             return response()->json([
-                'message' => $message,
+                'message' => array_merge(
+                    $message->load('user')->toArray(),
+                    ['message_type' => 'direct']
+                ),
                 'success' => true,
             ]);
         }
@@ -122,8 +130,14 @@ class ChatRoomController extends Controller
             // 再次清除快取，因為有 GPT 回應
             $this->messageCacheService->invalidateCacheOnNewMessage($chatRoom->id);
 
+            broadcast(new ChatMessageCreated($message, 'ai_query'))->toOthers();
+            broadcast(new AiReplyCompleted($gptMessage))->toOthers();
+
             return response()->json([
-                'message' => $message,
+                'message' => array_merge(
+                    $message->load('user')->toArray(),
+                    ['message_type' => 'ai_query']
+                ),
                 'gptResponse' => $gptMessage->text,
             ]);
         } catch (\Exception $e) {
@@ -179,6 +193,8 @@ class ChatRoomController extends Controller
             $conversation = $this->buildConversationContext($chatRoom);
             $stream = $this->gptService->sendMessageStream($data['message'], $conversation);
 
+            broadcast(new ChatMessageCreated($message, 'ai_query'))->toOthers();
+
             return response()->stream(function () use ($stream, $message, $chatRoom) {
                 // 初始化完整回應內容
                 $fullResponse = '';
@@ -207,6 +223,8 @@ class ChatRoomController extends Controller
 
                 // 清除快取，因為有新訊息
                 $this->messageCacheService->invalidateCacheOnNewMessage($chatRoom->id);
+
+                broadcast(new AiReplyCompleted($gptMessage))->toOthers();
 
                 // 發送完成信號
                 echo "data: " . json_encode(['done' => true, 'messageId' => $gptMessage->id]) . "\n\n";
@@ -260,6 +278,8 @@ class ChatRoomController extends Controller
 
             // 清除快取
             $this->messageCacheService->invalidateCacheOnNewMessage($chatRoom->id);
+
+            broadcast(new ChatRoomCleared($chatRoom->id, $deletedCount))->toOthers();
 
             return response()->json([
                 'success' => true,

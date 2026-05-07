@@ -19,7 +19,9 @@
         "vue": "^3.3.13"
     },
     "dependencies": {
+        "@ably/laravel-echo": "^1.0.6",
         "@fortawesome/fontawesome-free": "^7.0.1",
+        "ably": "^1.2.50",
         "marked": "^13.0.2",
         "openai": "^4.0.0",
         "vue-loader": "^17.3.1",

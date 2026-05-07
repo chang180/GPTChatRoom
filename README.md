@@ -9,7 +9,8 @@ Laravel 12 + Inertia.js + Vue 3 的聊天學習專案，目標是整理出一個
 - 已完成訊息持久化、歷史載入、聊天室清除
 - 已完成 OpenAI 串流回應
 - 已完成房間內最近訊息的 AI 上下文帶入
-- 目前前端即時回應方案是 `SSE`，尚未導入瀏覽器之間同步的 `WebSocket`
+- 已接上 Ably WebSocket Phase 1 骨架
+- 目前 AI 串流仍使用 `SSE`，房間級即時同步等待 Ably key 啟用
 
 ## 技術棧
 

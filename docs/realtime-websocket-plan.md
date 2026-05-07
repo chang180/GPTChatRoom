@@ -7,7 +7,7 @@
 目前專案的即時體驗其實分成兩件事：
 
 - AI 回覆串流：已完成，使用 `POST /chat/send-message-stream` + SSE，且會附帶最近聊天室上下文
-- 多使用者共享聊天室同步：尚未完成，沒有 WebSocket
+- 多使用者共享聊天室同步：Phase 1 程式骨架已完成，等待 Ably key 啟用與驗證
 
 這兩者不要混在一起。SSE 已足夠處理「我送出訊息後，逐字看到 AI 回覆」；WebSocket 要補的是「同房其他人也能立刻看到事件」。
 
@@ -111,6 +111,15 @@ WebSocket 只同步「事件結果」，不接手 OpenAI 串流主流程。
 - 新增 broadcast events
 - `ChatRoom.vue` 加入 Echo 訂閱
 
+目前狀態：
+
+- 已完成 `ably/laravel-broadcaster`
+- 已完成 `@ably/laravel-echo` + `ably`
+- 已完成 `config/broadcasting.php`
+- 已完成 `routes/channels.php`
+- 已完成聊天事件與前端房間訂閱
+- 尚待填入 Ably key 並做多瀏覽器驗證
+
 先不要做：
 
 - GPT token 廣播
@@ -166,12 +175,11 @@ php artisan install:broadcasting --ably
 
 1. 安裝 client 套件
 
-Laravel 官方文件對 Ably 提供兩條路：
+這個專案目前已採用 Ably 官方路線：
 
-- 走 Pusher 相容模式的 `laravel-echo + pusher-js`
-- 走 Ably 維護的 driver
-
-對這個專案，第一版建議先走 Pusher 相容模式，因為 Laravel 文件與範例最直接。
+- `ably/laravel-broadcaster`
+- `@ably/laravel-echo`
+- `ably`
 
 2. 在 `resources/js/bootstrap.js` 初始化 Echo
 
@@ -235,10 +243,10 @@ Laravel 官方文件對 Ably 提供兩條路：
 ```env
 BROADCAST_CONNECTION=ably
 ABLY_KEY=your_ably_key
-VITE_ABLY_PUBLIC_KEY=your_ably_public_key
+VITE_ABLY_ENABLED=true
 ```
 
-如果走 Laravel 文件中的 Pusher 相容模式，還需要確認 Ably dashboard 已開啟 Pusher protocol support。
+目前這個實作走的是 Ably 官方 Echo fork，前端透過 Laravel `broadcasting/auth` 取得授權，不需要把 Ably API key 暴露到 `VITE_...`。
 
 參考：
 
