@@ -63,7 +63,7 @@ docs/
 - `sendMessage()`: 一次性回應
 - `sendMessageStream()`: 串流回應
 
-目前模型寫死為 `gpt-5-nano`。
+目前模型寫死為 `gpt-5-nano`，且 controller 會傳入當前聊天室最近一段訊息作為上下文。
 
 ### `app/Services/MessageCacheService.php`
 
@@ -167,10 +167,11 @@ docs/
 1. 前端先在畫面插入使用者訊息與空白 GPT 訊息
 2. 前端呼叫 `POST /chat/send-message-stream`
 3. 後端先寫入使用者訊息
-4. 後端呼叫 OpenAI streamed chat
-5. 後端以 SSE `data: ...` 分段輸出內容
-6. 前端累加 GPT 文字
-7. 串流完成後，後端再寫入一筆 `sender_type=gpt`
+4. 後端整理當前聊天室最近訊息作為上下文
+5. 後端呼叫 OpenAI streamed chat
+6. 後端以 SSE `data: ...` 分段輸出內容
+7. 前端累加 GPT 文字
+8. 串流完成後，後端再寫入一筆 `sender_type=gpt`
 
 ## 8. 現有設計限制
 

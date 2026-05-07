@@ -29,6 +29,7 @@
 - 直接訊息模式
 - AI 問答模式
 - GPT SSE 串流回覆
+- 同房最近訊息會帶入 AI 上下文
 - 清除整個聊天室訊息
 
 ### 尚未完成
@@ -50,9 +51,9 @@
 
 `ChatRoom` model 目前實際使用的是 4 個全域主題聊天室。雖然 model 裡仍保留 `getDefaultForUser()`，但主流程優先走全域主題房。
 
-### 3. OpenAI 模型目前寫死
+### 3. OpenAI 模型目前寫死，但已帶最近聊天室上下文
 
-`app/Services/GPTService.php` 目前直接使用 `gpt-5-nano`。
+`app/Services/GPTService.php` 目前直接使用 `gpt-5-nano`，且 controller 會把同房最近訊息整理成 conversation messages 一起送出。
 
 ### 4. 快取已存在，但不是完整即時方案
 

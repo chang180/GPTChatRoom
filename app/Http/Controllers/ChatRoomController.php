@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Message;
 use App\Models\ChatRoom;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
@@ -108,7 +109,8 @@ class ChatRoomController extends Controller
 
         // 如果是 AI 發問模式，發送給 GPT
         try {
-            $gptResponse = $this->gptService->sendMessage($data['message']);
+            $conversation = $this->buildConversationContext($chatRoom);
+            $gptResponse = $this->gptService->sendMessage($data['message'], $conversation);
             $gptMessageContent = $gptResponse['choices'][0]['message']['content'];
             $gptMessage = Message::create([
                 'user_id' => Auth::id(),
@@ -174,7 +176,8 @@ class ChatRoomController extends Controller
         $this->messageCacheService->invalidateCacheOnNewMessage($chatRoom->id);
 
         try {
-            $stream = $this->gptService->sendMessageStream($data['message']);
+            $conversation = $this->buildConversationContext($chatRoom);
+            $stream = $this->gptService->sendMessageStream($data['message'], $conversation);
 
             return response()->stream(function () use ($stream, $message, $chatRoom) {
                 // 初始化完整回應內容
@@ -273,12 +276,31 @@ class ChatRoomController extends Controller
         }
     }
 
-    protected function resolveChatRoom(Request $request, $user, ?string $theme = null): ChatRoom
+    protected function resolveChatRoom(Request $request, User $user, ?string $theme = null): ChatRoom
     {
         $resolvedTheme = $theme ?? $request->route('theme') ?? $request->get('theme', 'work');
 
         return ChatRoom::getGlobalTheme($resolvedTheme)
             ?? ChatRoom::getGlobalTheme('work')
             ?? ChatRoom::getDefaultForUser($user);
+    }
+
+    protected function buildConversationContext(ChatRoom $chatRoom, int $limit = 20): array
+    {
+        return Message::query()
+            ->where('chat_room_id', $chatRoom->id)
+            ->whereIn('sender_type', ['user', 'gpt'])
+            ->latest('id')
+            ->limit($limit)
+            ->get()
+            ->reverse()
+            ->map(function (Message $message) {
+                return [
+                    'role' => $message->sender_type === 'gpt' ? 'assistant' : 'user',
+                    'content' => $message->text,
+                ];
+            })
+            ->values()
+            ->all();
     }
 }

@@ -6,7 +6,7 @@
 
 目前專案的即時體驗其實分成兩件事：
 
-- AI 回覆串流：已完成，使用 `POST /chat/send-message-stream` + SSE
+- AI 回覆串流：已完成，使用 `POST /chat/send-message-stream` + SSE，且會附帶最近聊天室上下文
 - 多使用者共享聊天室同步：尚未完成，沒有 WebSocket
 
 這兩者不要混在一起。SSE 已足夠處理「我送出訊息後，逐字看到 AI 回覆」；WebSocket 要補的是「同房其他人也能立刻看到事件」。
