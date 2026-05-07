@@ -9,8 +9,8 @@ Laravel 12 + Inertia.js + Vue 3 的聊天學習專案，目標是整理出一個
 - 已完成訊息持久化、歷史載入、聊天室清除
 - 已完成 OpenAI 串流回應
 - 已完成房間內最近訊息的 AI 上下文帶入
-- 已接上 Ably WebSocket Phase 1 骨架
-- 目前 AI 串流仍使用 `SSE`，房間級即時同步等待 Ably key 啟用
+- 已完成 Ably WebSocket Phase 1
+- 目前 AI 串流使用 `SSE`，房間級即時同步使用 Ably
 
 ## 技術棧
 
@@ -54,6 +54,10 @@ php artisan serve
 ```env
 OPENAI_API_KEY=your_openai_api_key
 OPENAI_ORGANIZATION=your_openai_organization
+BROADCAST_CONNECTION=ably
+ABLY_KEY=your_ably_key
+ABLY_TOKEN_EXPIRY=3600
+VITE_ABLY_ENABLED=true
 ```
 
 ## 開發指令
@@ -75,6 +79,6 @@ php artisan test
 
 ## 後續重點
 
-目前專案下一個主要階段是補上真正的房間級即時同步。規劃上會保留現在的 SSE 作為 AI 串流方案，另外新增 WebSocket 廣播來同步「使用者新訊息、AI 最終訊息、聊天室清除、在線狀態」。
+目前專案已完成第一階段房間級即時同步。現況是保留 SSE 作為 AI 串流方案，另外使用 Ably 廣播同步「使用者新訊息、AI 最終訊息、聊天室清除」。
 
 細節請看 [`docs/realtime-websocket-plan.md`](docs/realtime-websocket-plan.md)。

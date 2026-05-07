@@ -83,18 +83,24 @@ docs/
 - 管理 `direct` / `ai` 兩種送出模式
 - 以 `axios` 呼叫聊天 API
 - 用 `onDownloadProgress` 手動解析 SSE 片段
+- 訂閱 Ably 房間事件並同步其他使用者操作
 - 處理無限滾動載入更多歷史訊息
 - 清除聊天室與切換主題聊天室
 
 注意：
 
-- 目前沒有 `Laravel Echo`
-- 目前沒有任何前端 WebSocket client 設定
 - AI 串流是 HTTP response stream，不是 WebSocket
+- 目前使用 `@ably/laravel-echo`
+- 目前聊天室同步使用 public channel `chat-room.{id}`
 
 ### `resources/js/bootstrap.js`
 
-目前只初始化 `axios`，尚未建立 Echo / Pusher / Ably client。
+目前會：
+
+- 初始化 `axios`
+- 初始化 Ably Echo client
+- 以安全條件注入 `X-Socket-ID`
+- 使用 Laravel `broadcasting/auth` 作為授權端點
 
 ## 5. 路由
 
@@ -106,6 +112,7 @@ docs/
 - `POST /chat/send-message`
 - `POST /chat/send-message-stream`
 - `DELETE /chat/clear`
+- `GET|POST /broadcasting/auth`
 
 ## 6. 資料模型
 
@@ -160,35 +167,44 @@ docs/
 
 1. 前端呼叫 `POST /chat/send-message`
 2. 後端寫入一筆 `sender_type=user`
-3. 直接回傳成功，不呼叫 GPT
+3. 後端廣播聊天室事件到 Ably
+4. 直接回傳成功，不呼叫 GPT
 
 ### AI 問答
 
 1. 前端先在畫面插入使用者訊息與空白 GPT 訊息
 2. 前端呼叫 `POST /chat/send-message-stream`
 3. 後端先寫入使用者訊息
-4. 後端整理當前聊天室最近訊息作為上下文
-5. 後端呼叫 OpenAI streamed chat
-6. 後端以 SSE `data: ...` 分段輸出內容
-7. 前端累加 GPT 文字
-8. 串流完成後，後端再寫入一筆 `sender_type=gpt`
+4. 後端廣播使用者訊息到 Ably
+5. 後端整理當前聊天室最近訊息作為上下文
+6. 後端呼叫 OpenAI streamed chat
+7. 後端以 SSE `data: ...` 分段輸出內容
+8. 前端累加 GPT 文字
+9. 串流完成後，後端再寫入一筆 `sender_type=gpt`
+10. 後端再廣播 GPT 完整訊息到 Ably
+
+### 清除聊天室
+
+1. 前端呼叫 `DELETE /chat/clear`
+2. 後端刪除當前房間訊息
+3. 後端廣播清除事件到 Ably
+4. 同房其他頁面同步清空
 
 ## 8. 現有設計限制
 
-- 多使用者開同一聊天室時，彼此不會即時看到對方新訊息
-- GPT 串流只回到發送請求的那個瀏覽器
-- `loadMoreMessages()` 目前沒有把聊天室 ID 傳回後端，因此切換主題後的歷史分頁有混房風險
+- GPT 串流 token 仍只回到發送請求的那個瀏覽器
 - `clearChatRoom()` 會清空整個主題聊天室資料，因此目前是全域清除，不是清除個人視角
-- 目前沒有 broadcast event、private channel、presence channel 設計
+- 目前沒有 presence channel、typing、已讀設計
+- 目前聊天室同步使用 public channel；若未來要做房間授權，需再升級為 private / presence channel
 
 ## 9. 下一步建議
 
 - 保留 SSE 作為 AI token 串流
-- 另外導入 WebSocket 處理房間級即時同步
+- 保留目前 Ably 處理房間級即時同步
 - 優先同步的事件：
   - 使用者新訊息
   - GPT 完整回覆落庫完成
   - 聊天室清除
-  - 使用者加入 / 離開房間
+  - 之後再補使用者加入 / 離開房間
 
 詳細方案見 [`realtime-websocket-plan.md`](realtime-websocket-plan.md)。

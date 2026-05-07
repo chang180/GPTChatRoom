@@ -13,7 +13,7 @@
 - 資料庫：SQLite
 - 聊天室：4 個固定全域主題聊天室
 - AI 回應：OpenAI `gpt-5-nano`
-- 即時體驗：目前只有「同一位使用者送出後立即看到回應」的 SSE 串流，不是多使用者共享的 WebSocket 同步
+- 即時體驗：AI 串流使用 SSE，多使用者共享聊天室同步使用 Ably WebSocket
 
 ## 本階段已完成
 
@@ -24,12 +24,13 @@
 - GPT 串流回覆
 - 最近聊天室訊息的 AI 上下文
 - 聊天室清除
-- Ably broadcasting / Echo Phase 1 骨架
+- Ably broadcasting / Echo Phase 1
+- 多瀏覽器即時同步驗證
 
 ## 本階段尚未完成
 
 - 在線狀態 / typing / 已讀等 presence 類功能
-- Ably app key 與實機驗證
+- 更細的房間授權與成員模型
 
 ## 建議閱讀順序
 

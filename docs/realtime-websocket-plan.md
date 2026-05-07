@@ -7,7 +7,7 @@
 目前專案的即時體驗其實分成兩件事：
 
 - AI 回覆串流：已完成，使用 `POST /chat/send-message-stream` + SSE，且會附帶最近聊天室上下文
-- 多使用者共享聊天室同步：Phase 1 程式骨架已完成，等待 Ably key 啟用與驗證
+- 多使用者共享聊天室同步：Phase 1 已完成，並已通過 Ably 實機驗證
 
 這兩者不要混在一起。SSE 已足夠處理「我送出訊息後，逐字看到 AI 回覆」；WebSocket 要補的是「同房其他人也能立刻看到事件」。
 
@@ -85,13 +85,19 @@ WebSocket 只同步「事件結果」，不接手 OpenAI 串流主流程。
 
 ### 決策 C
 
-聊天室通道以房間 slug 或 id 區分，建議使用 private channel。
+聊天室通道目前以房間 id 區分，Phase 1 採用 public channel。
 
-建議命名：
+目前命名：
 
-- `private.chat-room.{chatRoomId}`
+- `chat-room.{chatRoomId}`
 
-這樣未來若房間改成每位使用者可建立自定義房，通道命名還能直接沿用。
+原因：
+
+- 目前 4 個主題聊天室本來就是全域共享
+- 尚未有真正的房間授權與成員模型
+- public channel 能降低 Echo / auth / token 鏈路的複雜度
+
+未來若房間改成私人或邀請制，再升級為 private / presence channel。
 
 ## 5. 建議實作階段
 
@@ -118,7 +124,8 @@ WebSocket 只同步「事件結果」，不接手 OpenAI 串流主流程。
 - 已完成 `config/broadcasting.php`
 - 已完成 `routes/channels.php`
 - 已完成聊天事件與前端房間訂閱
-- 尚待填入 Ably key 並做多瀏覽器驗證
+- 已完成 Ably key 設定與多瀏覽器驗證
+- 已完成 `ABLY_TOKEN_EXPIRY=3600` 相容 revocable token key
 
 先不要做：
 
@@ -243,10 +250,16 @@ php artisan install:broadcasting --ably
 ```env
 BROADCAST_CONNECTION=ably
 ABLY_KEY=your_ably_key
+ABLY_TOKEN_EXPIRY=3600
 VITE_ABLY_ENABLED=true
 ```
 
 目前這個實作走的是 Ably 官方 Echo fork，前端透過 Laravel `broadcasting/auth` 取得授權，不需要把 Ably API key 暴露到 `VITE_...`。
+
+補充：
+
+- 如果使用的是開啟 `revocation` 的 Ably key，token TTL 需要控制在 1 小時內
+- 專案目前預設使用 `ABLY_TOKEN_EXPIRY=3600`
 
 參考：
 
@@ -254,10 +267,10 @@ VITE_ABLY_ENABLED=true
 
 ## 9. 目前程式碼需要順手修正的點
 
-在導入 WebSocket 前，建議先修下面幾個基礎問題：
+在導入 WebSocket 前，原本建議先修下面幾個基礎問題；其中前兩項已完成：
 
-1. `loadMoreMessages()` 目前控制器沒有根據 theme / room 過濾，應補上聊天室參數，否則歷史分頁可能串房。
-2. `ChatRoom.vue` 目前用前端 optimistic append + 後端落庫，未來接廣播後一定要補去重策略。
+1. `loadMoreMessages()` 依當前聊天室過濾，避免歷史分頁串房。
+2. `ChatRoom.vue` 已補 optimistic UI 與廣播結果的去重處理。
 3. `clearChatRoom()` 是全域刪房訊息，這是產品決策，不是 bug，但文件要明確寫清楚。
 
 ## 10. 建議結論
@@ -265,8 +278,8 @@ VITE_ABLY_ENABLED=true
 這個專案的下一步不要把 SSE 改成 WebSocket，而是：
 
 1. 保留 SSE 做 AI 串流
-2. 導入 Ably 做房間級事件同步
-3. 先完成最小可用版事件廣播
-4. 再擴充 presence 與 typing
+2. 維持目前 Ably 房間級事件同步
+3. 後續再補 presence、typing、已讀
+4. 等房間授權模型成熟後，再決定是否升級為 private / presence channel
 
 這樣變更最小，也最符合目前專案的學習目標。
