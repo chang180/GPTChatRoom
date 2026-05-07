@@ -60,7 +60,7 @@ const generateMessageId = () => {
 const getEcho = () => window.Echo;
 
 const getSocketHeaders = () => {
-    const socketId = getEcho()?.socketId?.();
+    const socketId = window.getAblySocketId?.();
 
     return socketId ? { 'X-Socket-ID': socketId } : {};
 };
@@ -103,8 +103,7 @@ const subscribeToChatRoom = (chatRoom) => {
     const channelName = `chat-room.${chatRoom.id}`;
     activeBroadcastChannel.value = channelName;
 
-    getEcho()
-        .private(channelName)
+    getEcho().channel(channelName)
         .listen('.chat.message.created', ({ message }) => {
             if (message.chat_room_id !== currentChatRoom.value?.id) {
                 return;

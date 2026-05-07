@@ -69,6 +69,7 @@ return [
         'ably' => [
             'driver' => 'ably',
             'key' => env('ABLY_KEY'),
+            'token_expiry' => env('ABLY_TOKEN_EXPIRY', 3600),
         ],
 
         'log' => [
