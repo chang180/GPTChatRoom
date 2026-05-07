@@ -34,6 +34,7 @@ Laravel 12 + Inertia.js + Vue 3 的聊天學習專案，目標是整理出一個
 - 開發文件入口：[`docs/README.md`](docs/README.md)
 - 專案架構：[`docs/architecture.md`](docs/architecture.md)
 - 即時通訊與 WebSocket 規劃：[`docs/realtime-websocket-plan.md`](docs/realtime-websocket-plan.md)
+- 下一階段清單：[`docs/phase-2-checklist.md`](docs/phase-2-checklist.md)
 - AI 開發備忘：[`.ai-dev/README.md`](.ai-dev/README.md)
 
 ## 快速開始

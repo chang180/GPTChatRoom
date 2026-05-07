@@ -12,11 +12,11 @@
 
 這是一個 Laravel 12 + Inertia.js + Vue 3 的學習專案，主題是多聊天室 AI chat app。
 
-目前已到一個可用階段，但還沒做真正的多人即時同步。現況是：
+目前已到一個可用階段，且已完成第一版多人即時同步。現況是：
 
 - 有多聊天室
 - 有 AI 回覆串流
-- 沒有 WebSocket 廣播
+- 有 Ably 房間級事件同步
 
 ## 真實功能狀態
 
@@ -31,21 +31,24 @@
 - GPT SSE 串流回覆
 - 同房最近訊息會帶入 AI 上下文
 - 清除整個聊天室訊息
+- Ably WebSocket Phase 1
+- 多瀏覽器房間同步
 
 ### 尚未完成
 
-- 同房多使用者即時同步
-- WebSocket / Laravel Echo 整合
 - presence / typing / online users
-- 事件廣播與 channel 授權
+- 更細的房間權限模型
+- private / presence channel 升級策略
 
 ## 重要實作事實
 
-### 1. 即時方案目前是 SSE，不是 WebSocket
+### 1. 即時方案目前是 SSE + WebSocket 混合
 
 `ChatRoomController::sendMessageStream()` 透過 `response()->stream()` 輸出 `text/event-stream`。
 
 前端在 `resources/js/Pages/ChatRoom.vue` 使用 `axios` 的 `onDownloadProgress` 手動解析 SSE 內容。
+
+房間級共享事件則透過 Ably + Laravel Echo 同步。
 
 ### 2. 多聊天室是固定主題房，不是每人自建房
 
@@ -55,7 +58,17 @@
 
 `app/Services/GPTService.php` 目前直接使用 `gpt-5-nano`，且 controller 會把同房最近訊息整理成 conversation messages 一起送出。
 
-### 4. 快取已存在，但不是完整即時方案
+### 4. 即時同步目前使用 public channel
+
+Phase 1 目前採用 public channel `chat-room.{id}`，不是 private channel。
+
+原因：
+
+- 4 個主題聊天室本來就是全域共享
+- 目前沒有真正的房間授權模型
+- public channel 複雜度更低，適合目前階段
+
+### 5. 快取已存在，但不是完整即時方案
 
 `MessageCacheService` 負責頁面訊息快取與失效，不處理即時同步。
 
@@ -63,17 +76,18 @@
 
 下一階段優先順序：
 
-1. 補齊 `docs/realtime-websocket-plan.md` 中的 Ably + broadcasting 導入
-2. 修正歷史分頁的聊天室過濾問題
-3. 為前端訊息清單補事件去重邏輯
-4. 再追加 presence / typing
+1. 依 [`../docs/phase-2-checklist.md`](../docs/phase-2-checklist.md) 補 broadcast 測試
+2. 明確定義聊天室清空權限
+3. 規劃 presence / typing
+4. 再評估是否升級成 private / presence channel
 
 ## 開發時的判斷原則
 
 - 不要把 SSE 誤判成 WebSocket
-- 不要在文件中宣稱「已完成多人即時聊天」
+- 不要忽略現在已經有 Ably 房間級同步
 - 若要做 WebSocket，優先保留現有 SSE 串流，不要一次重寫整個聊天流程
 - 若要做學習型低成本部署，第一版優先考慮 Ably
+- 若房間仍是全域共享，不要為了技術正統性強行改回 private channel
 
 ## 常用檔案
 

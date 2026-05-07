@@ -1,9 +1,14 @@
 <?php
 
+use App\Events\AiReplyCompleted;
+use App\Events\ChatMessageCreated;
+use App\Events\ChatRoomCleared;
 use App\Models\ChatRoom;
+use App\Models\Message;
 use App\Services\GPTService;
 use App\Models\User;
 use Illuminate\Contracts\Auth\Authenticatable;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Session;
 use function Pest\Laravel\actingAs;
 use function Pest\Laravel\get;
@@ -196,4 +201,122 @@ it('includes recent room messages as AI context', function () {
 
     $response->assertStatus(200);
     expect($response->json('gptResponse'))->toBe('Context-aware response');
+});
+
+it('dispatches a broadcast event for direct messages', function () {
+    /** @var Authenticatable $user */
+    $user = User::factory()->create();
+
+    ChatRoom::ensureGlobalThemes();
+    Event::fake([ChatMessageCreated::class]);
+
+    actingAs($user);
+    Session::start();
+
+    $response = post(route('chat.send-message'), [
+        'message' => 'Direct message',
+        'theme' => 'work',
+        'message_type' => 'direct',
+        '_token' => csrf_token(),
+    ]);
+
+    $response->assertStatus(200);
+
+    Event::assertDispatched(ChatMessageCreated::class, function (ChatMessageCreated $event) use ($user) {
+        return $event->messageType === 'direct'
+            && $event->message->text === 'Direct message'
+            && $event->message->sender_type === 'user'
+            && $event->message->user_id === $user->id
+            && $event->message->chatRoom?->slug === 'work';
+    });
+});
+
+it('dispatches broadcast events for ai messages and final replies', function () {
+    /** @var Authenticatable $user */
+    $user = User::factory()->create();
+
+    ChatRoom::ensureGlobalThemes();
+    Event::fake([ChatMessageCreated::class, AiReplyCompleted::class]);
+
+    actingAs($user);
+
+    $mock = \Mockery::mock(GPTService::class);
+    $mock->shouldReceive('sendMessage')
+        ->once()
+        ->andReturn([
+            'choices' => [
+                [
+                    'message' => [
+                        'content' => 'AI final reply',
+                    ],
+                ],
+            ],
+        ]);
+    $this->app->instance(GPTService::class, $mock);
+
+    Session::start();
+
+    $response = post(route('chat.send-message'), [
+        'message' => 'Question for AI',
+        'theme' => 'work',
+        '_token' => csrf_token(),
+    ]);
+
+    $response->assertStatus(200);
+
+    Event::assertDispatched(ChatMessageCreated::class, function (ChatMessageCreated $event) use ($user) {
+        return $event->messageType === 'ai_query'
+            && $event->message->text === 'Question for AI'
+            && $event->message->sender_type === 'user'
+            && $event->message->user_id === $user->id
+            && $event->message->chatRoom?->slug === 'work';
+    });
+
+    Event::assertDispatched(AiReplyCompleted::class, function (AiReplyCompleted $event) use ($user) {
+        return $event->message->text === 'AI final reply'
+            && $event->message->sender_type === 'gpt'
+            && $event->message->user_id === $user->id
+            && $event->message->chatRoom?->slug === 'work';
+    });
+});
+
+it('dispatches a broadcast event when clearing a chat room', function () {
+    /** @var Authenticatable $user */
+    $user = User::factory()->create();
+
+    ChatRoom::ensureGlobalThemes();
+    $workRoom = ChatRoom::getGlobalTheme('work');
+
+    Message::create([
+        'user_id' => $user->id,
+        'chat_room_id' => $workRoom->id,
+        'text' => 'Message to clear',
+        'sender_type' => 'user',
+    ]);
+
+    Event::fake([ChatRoomCleared::class]);
+
+    actingAs($user);
+    Session::start();
+
+    $response = $this->delete(route('chat.clear'), [
+        'theme' => 'work',
+        '_token' => csrf_token(),
+    ]);
+
+    $response->assertStatus(200)
+        ->assertJson([
+            'success' => true,
+            'deleted_count' => 1,
+        ]);
+
+    $this->assertDatabaseMissing('messages', [
+        'chat_room_id' => $workRoom->id,
+        'text' => 'Message to clear',
+    ]);
+
+    Event::assertDispatched(ChatRoomCleared::class, function (ChatRoomCleared $event) use ($workRoom) {
+        return $event->chatRoomId === $workRoom->id
+            && $event->deletedCount === 1;
+    });
 });

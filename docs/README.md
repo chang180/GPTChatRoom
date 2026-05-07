@@ -6,6 +6,7 @@
 
 - [`architecture.md`](architecture.md): 專案結構、資料流、核心檔案、資料模型
 - [`realtime-websocket-plan.md`](realtime-websocket-plan.md): 現況分析、外部服務選型、WebSocket 導入計畫
+- [`phase-2-checklist.md`](phase-2-checklist.md): Ably Phase 1 之後的下一階段工作清單
 
 ## 專案現況摘要
 
@@ -36,4 +37,5 @@
 
 1. 先讀 [`architecture.md`](architecture.md)
 2. 再讀 [`realtime-websocket-plan.md`](realtime-websocket-plan.md)
-3. 實作時同步參考 [`.ai-dev/README.md`](../.ai-dev/README.md)
+3. 接著看 [`phase-2-checklist.md`](phase-2-checklist.md)
+4. 實作時同步參考 [`.ai-dev/README.md`](../.ai-dev/README.md)
