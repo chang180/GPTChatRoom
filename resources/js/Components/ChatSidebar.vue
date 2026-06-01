@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import { router } from '@inertiajs/vue3';
 import { route } from 'ziggy-js';
 import axios from 'axios';
@@ -118,6 +118,10 @@ const confirmCloseRoom = () => {
     closeError.value = '';
 
     router.delete(route('chat.private.destroy', props.currentChatRoom.id), {
+        preserveState: false,
+        onSuccess: () => {
+            showCloseConfirm.value = false;
+        },
         onError: () => {
             closeError.value = '關閉聊天室失敗，請再試一次。';
         },
@@ -126,6 +130,14 @@ const confirmCloseRoom = () => {
         },
     });
 };
+
+watch(
+    () => props.currentChatRoom?.id,
+    () => {
+        showCloseConfirm.value = false;
+        closeError.value = '';
+    },
+);
 </script>
 
 <template>
