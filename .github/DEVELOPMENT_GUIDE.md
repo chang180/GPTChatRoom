@@ -2,23 +2,26 @@
 
 本文件旨在協助開發者快速了解並參與此專案的開發。
 
+> **Agent 同步：** 套件版本與編碼規範以 [`.cursor/rules/laravel-boost.mdc`](../.cursor/rules/laravel-boost.mdc) 為準；總索引見 [`AGENTS.md`](../AGENTS.md)。
+
 ## 專案概覽
 
 這是一個基於 Laravel 框架的現代化網頁應用程式。
 
-- **後端**: Laravel 12
-- **前端**: Vue 3 + Inertia.js
-- **CSS 框架**: Tailwind CSS
-- **打包工具**: Vite
-- **測試框架**: Pest
-- **認證**: Laravel Jetstream
+- **後端**: Laravel 13、PHP 8.4、Jetstream 5、Sanctum 4
+- **前端**: Vue 3 + `@inertiajs/vue3` 1.x；伺服端 Inertia adapter v3
+- **CSS 框架**: Tailwind CSS 3
+- **打包工具**: Vite 6
+- **測試框架**: Pest 4
+- **認證**: Laravel Jetstream + Fortify
 - **程式碼風格**: Laravel Pint
+- **AI**: openai-php/laravel；**即時**: Ably broadcaster
 
 ## 環境設定
 
 在開始之前，請確保您的開發環境已安裝以下軟體：
 
-- PHP >= 8.2
+- PHP >= 8.4
 - Composer
 - Node.js & NPM
 

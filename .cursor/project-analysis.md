@@ -2,27 +2,31 @@
 
 ## 📋 專案概述
 
-**GPTChatRoom** 是一個基於 Laravel 12 的即時聊天室應用程式，整合了 OpenAI GPT API，提供用戶與 AI 的對話功能。專案採用現代化的技術堆疊，包含完整的認證系統、即時訊息流和響應式前端介面。
+**GPTChatRoom** 是一個基於 **Laravel 13** 的即時聊天室應用程式，整合了 OpenAI GPT API，提供用戶與 AI 的對話功能。專案採用現代化的技術堆疊，包含完整的認證系統、即時訊息流和響應式前端介面。
+
+> Agent 規則以 [`.cursor/rules/laravel-boost.mdc`](rules/laravel-boost.mdc) 為準；見 [`AGENTS.md`](../AGENTS.md)。
 
 ## 🏗️ 技術架構
 
 ### 後端技術堆疊
-- **Laravel Framework**: v12.0 (最新版本)
-- **PHP**: 8.4.12
-- **認證系統**: Laravel Jetstream + Fortify + Sanctum
+- **Laravel Framework**: v13.x (^13.0)
+- **PHP**: 8.4.x
+- **認證系統**: Laravel Jetstream 5 + Fortify + Sanctum 4
+- **Inertia (server)**: inertiajs/inertia-laravel v3
 - **資料庫**: SQLite (開發環境)
-- **AI 整合**: OpenAI PHP Laravel Package
-- **測試框架**: Pest v3 + PHPUnit v11
+- **AI 整合**: openai-php/laravel ^0.19
+- **測試框架**: Pest v4 + PHPUnit v12
+- **即時**: ably/laravel-broadcaster
 
 ### 前端技術堆疊
-- **Inertia.js**: v2 (SPA 框架)
-- **Vue.js**: v3.3.13
+- **Inertia (client)**: @inertiajs/vue3 v1.x
+- **Vue.js**: v3.x
 - **Tailwind CSS**: v3.4.0
 - **Vite**: v6.2.0 (建置工具)
 - **Marked**: v13.0.2 (Markdown 解析)
 
 ### 開發工具
-- **Laravel Boost**: v1.0 (開發輔助工具)
+- **Laravel Boost**: v2 (MCP / 開發輔助)
 - **Laravel Pint**: v1.13 (代碼格式化)
 - **Laravel Sail**: v1.26 (Docker 開發環境)
 - **Laravel Nightwatch**: v1.7 (監控工具)
@@ -196,7 +200,7 @@ tests/
 ## 📊 專案特色
 
 ### 技術亮點
-1. **現代化架構**: 使用 Laravel 12 最新特性
+1. **現代化架構**: 使用 Laravel 13 與 Inertia server v3
 2. **SPA 體驗**: Inertia.js 提供無刷新頁面切換
 3. **即時通訊**: Server-Sent Events 實現即時訊息流
 4. **AI 整合**: 完整的 OpenAI GPT API 整合

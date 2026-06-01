@@ -5,20 +5,28 @@
 
 The Laravel Boost guidelines are specifically curated by Laravel maintainers for this application. These guidelines should be followed closely to enhance the user's satisfaction building Laravel applications.
 
+> **Canonical (Cursor, always applied):** [`.cursor/rules/laravel-boost.mdc`](../.cursor/rules/laravel-boost.mdc) — update that file first after stack changes; keep this copy aligned when possible.
+
 ## Foundational Context
 This application is a Laravel application and its main Laravel ecosystems package & versions are below. You are an expert with them all. Ensure you abide by these specific packages & versions.
 
-- php - 8.4.10
-- inertiajs/inertia-laravel (INERTIA) - v2
-- laravel/framework (LARAVEL) - v12
-- laravel/nightwatch (NIGHTWATCH) - v1
-- laravel/prompts (PROMPTS) - v0
-- tightenco/ziggy (ZIGGY) - v2
-- laravel/pint (PINT) - v1
-- pestphp/pest (PEST) - v3
-- @inertiajs/vue3 (INERTIA) - v1
-- tailwindcss (TAILWINDCSS) - v3
-- vue (VUE) - v3
+**Stack upgraded 2026-06-01 (private-room Phase 1).** Do not assume Laravel 12 or inertia-laravel v2.
+
+- php - 8.4.x
+- laravel/framework (LARAVEL) - v13
+- inertiajs/inertia-laravel (INERTIA server) - v3
+- @inertiajs/vue3 (INERTIA client) - v1
+- laravel/jetstream - v5
+- laravel/fortify - v1
+- laravel/sanctum - v4
+- laravel/nightwatch - v1
+- laravel/tinker - v3
+- openai-php/laravel - v0.19
+- pestphp/pest (PEST) - v4
+- phpunit/phpunit - v12
+- tailwindcss - v3
+- vue - v3
+- vite - v6
 
 
 ## Conventions
@@ -129,13 +137,15 @@ Route::get('/users', function () {
 </code-snippet>
 
 
-=== inertia-laravel/v2 rules ===
+=== inertia-laravel/v3 rules ===
 
-## Inertia v2
+## Inertia (server v3 + Vue client v1)
 
-- Make use of all Inertia features from v1 & v2. Check the documentation before making any changes to ensure we are taking the correct approach.
+- **Server:** `inertiajs/inertia-laravel` v3 — use `search-docs` for adapter APIs.
+- **Client:** `@inertiajs/vue3` v1 — pages under `resources/js/Pages`.
+- Do not use inertia-laravel v2-only patterns.
 
-### Inertia v2 New Features
+### Inertia server features (confirm in docs)
 - Polling
 - Prefetching
 - Deferred props
@@ -192,14 +202,14 @@ Route::get('/users', function () {
 - If you receive an "Illuminate\Foundation\ViteException: Unable to locate file in Vite manifest" error, you can run `npm run build` or ask the user to run `npm run dev` or `composer run dev`.
 
 
-=== laravel/v12 rules ===
+=== laravel/v13 rules ===
 
-## Laravel 12
+## Laravel 13
 
 - Use the `search-docs` tool to get version specific documentation.
 - Since Laravel 11, Laravel has a new streamlined file structure which this project uses.
 
-### Laravel 12 Structure
+### Laravel 13 Structure
 - No middleware files in `app/Http/Middleware/`.
 - `bootstrap/app.php` is the file to register middleware, exceptions, and routing files.
 - `bootstrap/providers.php` contains application specific service providers.
@@ -225,6 +235,8 @@ Route::get('/users', function () {
 === pest/core rules ===
 
 ## Pest
+
+- This project uses **Pest 4** (`pestphp/pest` ^4.0).
 
 ### Testing
 - If you need to verify a feature is working, write or update a Unit / Feature test.

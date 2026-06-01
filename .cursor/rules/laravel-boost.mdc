@@ -11,21 +11,29 @@ The Laravel Boost guidelines are specifically curated by Laravel maintainers for
 ## Foundational Context
 This application is a Laravel application and its main Laravel ecosystems package & versions are below. You are an expert with them all. Ensure you abide by these specific packages & versions.
 
-- php - 8.4.12
-- inertiajs/inertia-laravel (INERTIA) - v2
+**Stack upgraded 2026-06-01 (private-room Phase 1).** Do not assume Laravel 12 or inertia-laravel v2 — use `search-docs` against the versions listed here.
+
+- php - 8.4.x (^8.4 in composer.json)
+- laravel/framework (LARAVEL) - v13 (^13.0; lock e.g. v13.12.0)
+- inertiajs/inertia-laravel (INERTIA server) - v3 (^3.0; lock e.g. v3.1.0)
+- @inertiajs/vue3 (INERTIA client) - v1 (^1.0.14)
+- laravel/jetstream (JETSTREAM) - v5
 - laravel/fortify (FORTIFY) - v1
-- laravel/framework (LARAVEL) - v12
-- laravel/nightwatch (NIGHTWATCH) - v1
-- laravel/prompts (PROMPTS) - v0
 - laravel/sanctum (SANCTUM) - v4
+- laravel/nightwatch (NIGHTWATCH) - v1
+- laravel/tinker (TINKER) - v3
+- laravel/prompts (PROMPTS) - v0
+- openai-php/laravel (OPENAI) - v0.19
+- ably/laravel-broadcaster (ABLY) - v1
 - tightenco/ziggy (ZIGGY) - v2
 - laravel/pint (PINT) - v1
 - laravel/sail (SAIL) - v1
-- pestphp/pest (PEST) - v3
-- phpunit/phpunit (PHPUNIT) - v11
-- @inertiajs/vue3 (INERTIA) - v1
+- laravel/boost (BOOST MCP) - v2
+- pestphp/pest (PEST) - v4
+- phpunit/phpunit (PHPUNIT) - v12 (via Pest 4)
 - tailwindcss (TAILWINDCSS) - v3
 - vue (VUE) - v3
+- vite (VITE) - v6
 
 
 ## Conventions
@@ -48,6 +56,28 @@ This application is a Laravel application and its main Laravel ecosystems packag
 
 ## Documentation Files
 - You must only create documentation files if explicitly requested by the user.
+
+## Agent documentation sync
+
+When the PHP/JS stack changes (e.g. after `private-room` Phase 1), keep **all agent-facing docs** aligned with this file.
+
+**Source of truth (in order):** `composer.lock` → **this file** (`.cursor/rules/laravel-boost.mdc`) → files below.
+
+| File | Tool / audience |
+|------|-----------------|
+| `.cursor/rules/laravel-boost.mdc` | **Canonical** — Cursor always-applied rules |
+| `AGENTS.md` | Index for any coding agent (Codex, Claude, Copilot) |
+| `.cursor/CLAUDE.md` | Cursor / Claude Code — commands & architecture |
+| `.claude/CLAUDE.md` | Mirror of `.cursor/CLAUDE.md` (keep identical) |
+| `.github/copilot-instructions.md` | GitHub Copilot — mirror Boost guidelines |
+| `.cursor/project-analysis.md` | Deep-dive snapshot (versions in § 技術架構) |
+| `.github/DEVELOPMENT_GUIDE.md` | Human + agent onboarding |
+| `.ai-dev/README.md` | Feature truth + links to `docs/` |
+| `README.md`, `docs/README.md` | Public / docs entry |
+
+**Do not** teach Laravel 12, `inertia-laravel` v2, or Pest 3 in agent docs after a v13 upgrade. Use `search-docs` (Boost MCP) for API details.
+
+**Private-room work:** specs in `.ai-dev/private-room/` — one phase per task; see `handoff.md`.
 
 
 === boost rules ===
@@ -137,13 +167,15 @@ Route::get('/users', function () {
 </code-snippet>
 
 
-=== inertia-laravel/v2 rules ===
+=== inertia-laravel/v3 rules ===
 
-## Inertia v2
+## Inertia (server v3 + Vue client v1)
 
-- Make use of all Inertia features from v1 & v2. Check the documentation before making any changes to ensure we are taking the correct approach.
+- **Server:** `inertiajs/inertia-laravel` v3 — use Inertia v3 / Laravel adapter docs via `search-docs`.
+- **Client:** `@inertiajs/vue3` v1 — Vue 3 pages in `resources/js/Pages`; navigation via `@inertiajs/vue3` (`router`, `Link`, `useForm`).
+- Do not reference inertia-laravel v2-only install or config patterns; verify against v3 docs before changing middleware, shared data, or SSR setup.
 
-### Inertia v2 New Features
+### Inertia server features (polling, deferred props, etc.; confirm in v3 docs)
 - Polling
 - Prefetching
 - Deferred props
@@ -203,14 +235,14 @@ Route::get('/users', function () {
 - If you receive an "Illuminate\Foundation\ViteException: Unable to locate file in Vite manifest" error, you can run `npm run build` or ask the user to run `npm run dev` or `composer run dev`.
 
 
-=== laravel/v12 rules ===
+=== laravel/v13 rules ===
 
-## Laravel 12
+## Laravel 13
 
-- Use the `search-docs` tool to get version specific documentation.
-- Since Laravel 11, Laravel has a new streamlined file structure which this project uses.
+- Use the `search-docs` tool to get version-specific documentation for **Laravel 13** (not 12).
+- This project upgraded from Laravel 12 with minimal structural change; still uses the Laravel 11+ streamlined layout.
 
-### Laravel 12 Structure
+### Laravel 13 Structure
 - No middleware files in `app/Http/Middleware/`.
 - `bootstrap/app.php` is the file to register middleware, exceptions, and routing files.
 - `bootstrap/providers.php` contains application specific service providers.
@@ -236,6 +268,8 @@ Route::get('/users', function () {
 === pest/core rules ===
 
 ## Pest
+
+- This project uses **Pest 4** (`pestphp/pest` ^4.0). Use Pest 4 / PHPUnit 12 syntax when adding tests; consult `search-docs` if unsure.
 
 ### Testing
 - If you need to verify a feature is working, write or update a Unit / Feature test.

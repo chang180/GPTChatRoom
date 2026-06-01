@@ -5,7 +5,7 @@
 ## 技術堆疊
 
 ### 後端 (Backend)
-- **框架**: Laravel 12.0
+- **框架**: Laravel 13.x
 - **認證**: Laravel Jetstream + Sanctum
 - **資料庫**: SQLite
 - **AI 服務**: OpenAI GPT-4o-mini
@@ -17,7 +17,7 @@
 - **框架**: Vue.js 3.3.13
 - **建構工具**: Vite 6.2.0
 - **CSS 框架**: Tailwind CSS 3.4.0
-- **路由**: Inertia.js (Server-side routing)
+- **路由**: Inertia.js — server `inertia-laravel` v3, client `@inertiajs/vue3` v1
 - **Markdown 渲染**: Marked.js
 - **HTTP 客戶端**: Axios
 

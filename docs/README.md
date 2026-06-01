@@ -12,6 +12,7 @@
 ## 專案現況摘要
 
 - 架構：Laravel 13 + Inertia.js + Vue 3
+- Agent 規範：[`../AGENTS.md`](../AGENTS.md)
 - 資料庫：SQLite
 - 聊天室：4 個固定全域主題聊天室
 - AI 回應：OpenAI `gpt-5-nano`

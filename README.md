@@ -15,11 +15,13 @@ Laravel 13 + Inertia.js + Vue 3 的聊天學習專案，目標是整理出一個
 
 ## 技術棧
 
-- Backend: Laravel 13, Jetstream, Sanctum, OpenAI PHP SDK
-- Frontend: Vue 3, Inertia.js, Vite, Tailwind CSS
+- Backend: Laravel 13, Jetstream, Sanctum, `openai-php/laravel`, Ably broadcaster
+- Frontend: Vue 3, `@inertiajs/vue3`, Inertia server v3, Vite, Tailwind CSS
 - Database: SQLite
 - Cache: Laravel Cache
-- Test: Pest
+- Test: Pest 4
+
+**給 AI / coding agents：** 見 [`AGENTS.md`](AGENTS.md) 與 [`.cursor/rules/laravel-boost.mdc`](.cursor/rules/laravel-boost.mdc)。
 
 ## 核心功能
 

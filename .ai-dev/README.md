@@ -4,6 +4,8 @@
 
 ## 文件入口
 
+- **Agent 總索引（套件版本 / 規範）：** [`../AGENTS.md`](../AGENTS.md) →  canonical [`.cursor/rules/laravel-boost.mdc`](../.cursor/rules/laravel-boost.mdc)
+- **分 phase 實作（private-room）：** [`.ai-dev/private-room/handoff.md`](private-room/handoff.md)
 - 專案開發文件：[`../docs/README.md`](../docs/README.md)
 - **生產佈署提醒**：[`../docs/deployment.md`](../docs/deployment.md)（pull 後必跑 migration）
 - 架構說明：[`../docs/architecture.md`](../docs/architecture.md)

@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+> **Sync:** Keep identical to [`.cursor/CLAUDE.md`](../.cursor/CLAUDE.md). Canonical Laravel rules: [`.cursor/rules/laravel-boost.mdc`](../.cursor/rules/laravel-boost.mdc). Index: [`AGENTS.md`](../AGENTS.md).
+
 ## Commands
 
 ### Development
@@ -57,15 +59,16 @@ php artisan db:seed
 
 ## Architecture Overview
 
-This is a **Laravel 12 + Vue.js 3 + Inertia.js** chat application that integrates with OpenAI's GPT-5-nano model for AI conversations.
+This is a **Laravel 13 + Vue.js 3 + Inertia.js** chat application that integrates with OpenAI's GPT-5-nano model for AI conversations.
 
 ### Key Technology Stack
-- **Backend**: Laravel 12 with PHP 8.4, Laravel Jetstream (authentication), Laravel Sanctum (API auth)
-- **Frontend**: Vue.js 3.3, Inertia.js 2.0, Tailwind CSS 3.4
+- **Backend**: Laravel 13 with PHP 8.4, Laravel Jetstream 5, Laravel Sanctum 4, `inertiajs/inertia-laravel` 3
+- **Frontend**: Vue.js 3, `@inertiajs/vue3` 1.x, Tailwind CSS 3.4
 - **Build Tool**: Vite 6.2
 - **Database**: SQLite (development), MySQL (production option)
-- **AI Integration**: OpenAI PHP SDK with GPT-5-nano model
-- **Testing**: Pest 3.0 framework
+- **AI Integration**: `openai-php/laravel` ^0.19 with GPT-5-nano model
+- **Testing**: Pest 4
+- **Realtime**: Ably + Laravel Echo (`ably/laravel-broadcaster`)
 
 ### Core Components
 
@@ -91,7 +94,7 @@ This is a **Laravel 12 + Vue.js 3 + Inertia.js** chat application that integrate
 - **Authentication**: All chat routes protected by Sanctum authentication middleware
 
 ### Development Conventions
-- **PHP**: Uses Laravel 12 streamlined structure (no `app/Http/Kernel.php`, middleware in `bootstrap/app.php`)
+- **PHP**: Uses Laravel 11+ streamlined structure (no `app/Http/Kernel.php`, middleware in `bootstrap/app.php`)
 - **Vue**: Composition API with `<script setup>` syntax
 - **Styling**: Tailwind CSS utility classes
 - **Testing**: Pest framework with feature and unit tests
@@ -114,4 +117,7 @@ This is a **Laravel 12 + Vue.js 3 + Inertia.js** chat application that integrate
 4. AI response stored as new message with `sender_type: 'gpt'`
 5. Frontend updates chat interface with new messages
 
-This application follows Laravel 12 conventions and uses Laravel Boost guidelines as defined in `.github/copilot-instructions.md`.
+This application follows Laravel 13 conventions and uses Laravel Boost guidelines in `.cursor/rules/laravel-boost.mdc` (always apply). Prefer `search-docs` (Boost MCP) for version-specific APIs.
+
+### Private-room initiative
+- Phased specs live in `.ai-dev/private-room/` (`plan.md`, `phase-N-handoff.md`, `progress.md`). Execute **one phase per task**; read handoff before coding.
