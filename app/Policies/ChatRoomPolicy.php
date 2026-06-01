@@ -52,6 +52,6 @@ class ChatRoomPolicy
      */
     public function delete(User $user, ChatRoom $chatRoom): bool
     {
-        return $chatRoom->isOwnedBy($user);
+        return $chatRoom->isPrivateGroup() && $chatRoom->isOwnedBy($user);
     }
 }

@@ -6,6 +6,7 @@ use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -132,15 +133,18 @@ class ChatRoom extends Model
     public static function ensureGlobalThemes(): void
     {
         foreach (self::GLOBAL_THEME_DEFINITIONS as $slug => $theme) {
-            static::firstOrCreate(
-                ['slug' => $slug],
-                [
-                    'name' => $theme['name'],
-                    'description' => $theme['description'],
-                    'user_id' => null,
-                    'is_active' => true,
-                ]
-            );
+            $attributes = [
+                'name' => $theme['name'],
+                'description' => $theme['description'],
+                'user_id' => null,
+                'is_active' => true,
+            ];
+
+            if (Schema::hasColumn((new self)->getTable(), 'type')) {
+                $attributes['type'] = self::TYPE_GLOBAL_THEME;
+            }
+
+            static::firstOrCreate(['slug' => $slug], $attributes);
         }
     }
 

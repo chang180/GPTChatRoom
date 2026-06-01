@@ -9,6 +9,7 @@ const props = defineProps({
     privateRooms: { type: Array, default: () => [] },
     currentChatRoom: { type: Object, default: null },
     roomMode: { type: String, default: 'theme' },
+    canDelete: { type: Boolean, default: false },
 });
 
 const themeIcon = (slug) => ({
@@ -97,6 +98,34 @@ const copyInvite = async () => {
         copied.value = false;
     }
 };
+
+// 關閉私人房
+const showCloseConfirm = ref(false);
+const closing = ref(false);
+const closeError = ref('');
+
+const openCloseConfirm = () => {
+    closeError.value = '';
+    showCloseConfirm.value = true;
+};
+
+const confirmCloseRoom = () => {
+    if (!props.currentChatRoom?.id) {
+        return;
+    }
+
+    closing.value = true;
+    closeError.value = '';
+
+    router.delete(route('chat.private.destroy', props.currentChatRoom.id), {
+        onError: () => {
+            closeError.value = '關閉聊天室失敗，請再試一次。';
+        },
+        onFinish: () => {
+            closing.value = false;
+        },
+    });
+};
 </script>
 
 <template>
@@ -157,14 +186,23 @@ const copyInvite = async () => {
             </button>
         </div>
 
-        <!-- 邀請（僅在私人房內顯示） -->
-        <div v-if="roomMode === 'private' && currentChatRoom?.id" class="mt-auto p-3 border-t border-gray-200 dark:border-gray-700">
+        <!-- 邀請／關閉（僅在私人房內顯示） -->
+        <div v-if="roomMode === 'private' && currentChatRoom?.id" class="mt-auto p-3 border-t border-gray-200 dark:border-gray-700 space-y-2">
             <button
                 @click="openInvite"
                 class="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm rounded-lg bg-green-600 hover:bg-green-700 text-white transition-colors"
             >
                 <i class="fas fa-user-plus"></i>
                 邀請成員
+            </button>
+            <button
+                v-if="canDelete"
+                type="button"
+                @click="openCloseConfirm"
+                class="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm rounded-lg border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors"
+            >
+                <i class="fas fa-door-closed"></i>
+                關閉聊天室
             </button>
         </div>
     </aside>
@@ -207,6 +245,33 @@ const copyInvite = async () => {
                     </button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- 關閉私人房確認 -->
+    <div v-if="showCloseConfirm" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" @click.self="showCloseConfirm = false">
+        <div class="w-full max-w-md bg-white dark:bg-gray-800 rounded-xl shadow-xl p-6">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                <i class="fas fa-door-closed mr-2 text-red-600"></i>關閉聊天室？
+            </h3>
+            <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">
+                將永久刪除「{{ currentChatRoom?.name }}」的所有訊息、成員與邀請連結，此操作無法復原。
+            </p>
+            <p v-if="closeError" class="text-sm text-red-600 dark:text-red-400 mb-3">{{ closeError }}</p>
+            <div class="flex justify-end gap-3">
+                <button type="button" @click="showCloseConfirm = false" class="px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100">
+                    取消
+                </button>
+                <button
+                    type="button"
+                    :disabled="closing"
+                    @click="confirmCloseRoom"
+                    class="px-4 py-2 text-sm rounded-lg bg-red-600 hover:bg-red-700 text-white disabled:opacity-50"
+                >
+                    <i v-if="closing" class="fas fa-spinner fa-spin mr-1"></i>
+                    確認關閉
+                </button>
+            </div>
         </div>
     </div>
 

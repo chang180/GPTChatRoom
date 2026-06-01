@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Crypt;
 use Inertia\Testing\AssertableInertia as Assert;
 
 use function Pest\Laravel\actingAs;
+use function Pest\Laravel\assertDatabaseMissing;
 
 /**
  * 建立一個私人房並把指定使用者設為 owner。
@@ -68,6 +69,67 @@ it('creates a private room with the creator as owner member', function () {
         'user_id' => $user->id,
         'role' => 'owner',
     ]);
+});
+
+it('creates a private room without a description field in the request', function () {
+    $user = User::factory()->create();
+
+    actingAs($user)
+        ->post(route('chat.private.store'), ['name' => '僅名稱'])
+        ->assertRedirect();
+
+    $room = ChatRoom::where('type', ChatRoom::TYPE_PRIVATE_GROUP)->first();
+
+    expect($room)->not->toBeNull()
+        ->and($room->name)->toBe('僅名稱')
+        ->and($room->description)->toBeNull();
+});
+
+it('lets the owner close a private room', function () {
+    $owner = User::factory()->create();
+    $room = privateRoomWithOwner($owner);
+
+    Message::create([
+        'user_id' => $owner->id,
+        'chat_room_id' => $room->id,
+        'text' => '待刪除訊息',
+        'sender_type' => 'user',
+    ]);
+
+    actingAs($owner)
+        ->delete(route('chat.private.destroy', $room))
+        ->assertRedirect(route('chat.private.index'));
+
+    assertDatabaseMissing('chat_rooms', ['id' => $room->id]);
+    assertDatabaseMissing('chat_room_members', ['chat_room_id' => $room->id]);
+    assertDatabaseMissing('messages', ['chat_room_id' => $room->id]);
+});
+
+it('forbids a non-owner from closing a private room', function () {
+    $owner = User::factory()->create();
+    $member = User::factory()->create();
+    $room = privateRoomWithOwner($owner);
+
+    $room->memberRecords()->create([
+        'user_id' => $member->id,
+        'role' => ChatRoomMember::ROLE_MEMBER,
+        'joined_at' => now(),
+    ]);
+
+    actingAs($member)
+        ->delete(route('chat.private.destroy', $room))
+        ->assertForbidden();
+
+    expect(ChatRoom::find($room->id))->not->toBeNull();
+});
+
+it('returns not found when resolving a global theme as a private chat room', function () {
+    ChatRoom::ensureGlobalThemes();
+    $workRoom = ChatRoom::getGlobalTheme('work');
+
+    actingAs(User::factory()->create())
+        ->get(route('chat.private.show', $workRoom))
+        ->assertNotFound();
 });
 
 it('lets the owner generate an invitation token', function () {
@@ -357,6 +419,7 @@ it('shares private room props including members on the show page', function () {
             ->component('ChatRoom')
             ->where('roomMode', 'private')
             ->where('canClear', true)
+            ->where('canDelete', true)
             ->has('members', 1)
         );
 });

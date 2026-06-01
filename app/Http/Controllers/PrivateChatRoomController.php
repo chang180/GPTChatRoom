@@ -7,10 +7,13 @@ use App\Http\Requests\StorePrivateChatRoomRequest;
 use App\Models\ChatRoom;
 use App\Models\ChatRoomInvitation;
 use App\Models\ChatRoomMember;
+use App\Models\ConversationSummary;
+use App\Models\Message;
 use App\Models\User;
 use App\Services\MessageCacheService;
 use App\Support\PendingChatRoomInvitation;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 
@@ -56,6 +59,7 @@ class PrivateChatRoomController extends Controller
             'privateRooms' => $this->privateRoomsFor($user),
             'members' => $this->membersFor($chatRoom),
             'canClear' => $user->can('clear', $chatRoom),
+            'canDelete' => $user->can('delete', $chatRoom),
             'user' => $user,
         ]);
     }
@@ -66,23 +70,52 @@ class PrivateChatRoomController extends Controller
     public function store(StorePrivateChatRoomRequest $request)
     {
         $user = Auth::user();
+        $validated = $request->validated();
 
-        $chatRoom = ChatRoom::create([
-            'name' => $request->validated('name'),
-            'description' => $request->validated('description'),
-            'slug' => 'private-'.Str::uuid(),
-            'type' => ChatRoom::TYPE_PRIVATE_GROUP,
-            'created_by' => $user->id,
-            'is_active' => true,
-        ]);
+        $chatRoom = DB::transaction(function () use ($user, $validated): ChatRoom {
+            $chatRoom = ChatRoom::create([
+                'name' => $validated['name'],
+                'description' => $validated['description'] ?? null,
+                'slug' => 'private-'.Str::uuid()->toString(),
+                'type' => ChatRoom::TYPE_PRIVATE_GROUP,
+                'created_by' => $user->id,
+                'user_id' => $user->id,
+                'is_active' => true,
+            ]);
 
-        $chatRoom->memberRecords()->create([
-            'user_id' => $user->id,
-            'role' => ChatRoomMember::ROLE_OWNER,
-            'joined_at' => now(),
-        ]);
+            $chatRoom->memberRecords()->create([
+                'user_id' => $user->id,
+                'role' => ChatRoomMember::ROLE_OWNER,
+                'joined_at' => now(),
+            ]);
+
+            return $chatRoom;
+        });
 
         return redirect()->route('chat.private.show', $chatRoom);
+    }
+
+    /**
+     * 關閉（刪除）私人房，僅 owner 可操作。
+     */
+    public function destroy(ChatRoom $chatRoom)
+    {
+        $this->authorize('delete', $chatRoom);
+
+        $chatRoomId = $chatRoom->id;
+
+        DB::transaction(function () use ($chatRoom): void {
+            Message::query()->where('chat_room_id', $chatRoom->id)->delete();
+            ConversationSummary::query()->where('chat_room_id', $chatRoom->id)->delete();
+            $chatRoom->invitations()->delete();
+            $chatRoom->memberRecords()->delete();
+            $chatRoom->delete();
+        });
+
+        $this->messageCacheService->invalidateCacheOnNewMessage($chatRoomId);
+
+        return redirect()->route('chat.private.index')
+            ->with('status', '私人聊天室已關閉。');
     }
 
     /**

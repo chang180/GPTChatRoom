@@ -16,6 +16,7 @@ const props = defineProps({
     privateRooms: { type: Array, default: () => [] },
     members: { type: Array, default: () => [] },
     canClear: { type: Boolean, default: false },
+    canDelete: { type: Boolean, default: false },
 });
 
 // 創建一個純淨的消息數組，避免序列化問題
@@ -595,6 +596,7 @@ watch(() => props.currentChatRoom?.id, (newRoomId, oldRoomId) => {
                 :private-rooms="privateRooms"
                 :current-chat-room="currentChatRoom"
                 :room-mode="roomMode"
+                :can-delete="props.canDelete"
             />
             <div class="flex-1 flex flex-col bg-white dark:bg-gray-900 min-w-0">
                 <!-- 目前房間標題 -->

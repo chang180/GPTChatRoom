@@ -116,6 +116,25 @@ VITE_ABLY_ENABLED=true
 
 驗證失敗時常見原因：`BROADCAST_CONNECTION` 仍為 `log`／`null`、未 build 前端、`ABLY_KEY` 錯誤、未登入導致 private channel 授權失敗。
 
+### 私人聊天室（private_group）
+
+建立私人房若回傳 **500**，最常見原因是 **尚未執行 Phase 3 migration**（缺少 `chat_rooms.type` / `created_by` 或 `chat_room_members` 表）。
+
+佈署後請確認：
+
+```bash
+php artisan migrate --force
+php artisan migrate:status | grep 154824
+```
+
+應已執行（檔名時間戳可能相同批次）：
+
+- `2026_06_01_154824_add_type_and_created_by_to_chat_rooms_table.php`
+- `2026_06_01_154824_create_chat_room_members_table.php`
+- `2026_06_01_154824_create_chat_room_invitations_table.php`
+
+若 `migrate:status` 顯示 Pending，請在維護時段執行 `php artisan migrate --force` 後再試建立私人房。
+
 ### 新增資料庫物件
 
 Migration（依序執行；`php artisan migrate` 會自動套用尚未執行的檔案）：

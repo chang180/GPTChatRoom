@@ -50,6 +50,7 @@ Route::middleware([
     Route::get('/chat/private', [PrivateChatRoomController::class, 'index'])->name('chat.private.index');
     Route::post('/chat/private', [PrivateChatRoomController::class, 'store'])->name('chat.private.store');
     Route::get('/chat/private/{chatRoom}', [PrivateChatRoomController::class, 'show'])->name('chat.private.show');
+    Route::delete('/chat/private/{chatRoom}', [PrivateChatRoomController::class, 'destroy'])->name('chat.private.destroy');
     Route::post('/chat/private/{chatRoom}/invitations', [PrivateChatRoomController::class, 'storeInvitation'])->name('chat.private.invitations.store');
     Route::delete('/chat/private/{chatRoom}/members/{user}', [PrivateChatRoomController::class, 'destroyMember'])->name('chat.private.members.destroy');
 
