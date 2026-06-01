@@ -101,8 +101,8 @@ const copyInvite = async () => {
 
 <template>
     <aside class="w-60 flex-shrink-0 flex flex-col bg-gray-100 dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 overflow-y-auto">
-        <!-- 區塊 A：公開主題 -->
-        <div class="p-3">
+        <!-- 區塊 A：公開主題（僅公開聊天） -->
+        <div v-if="roomMode === 'theme'" class="p-3">
             <h3 class="px-2 mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
                 公開主題
             </h3>
@@ -122,8 +122,8 @@ const copyInvite = async () => {
             </button>
         </div>
 
-        <!-- 區塊 B：私人聊天室 -->
-        <div class="p-3 border-t border-gray-200 dark:border-gray-700">
+        <!-- 區塊 B：私人聊天室（僅私人聊天） -->
+        <div v-if="roomMode === 'private'" class="p-3">
             <div class="flex items-center justify-between px-2 mb-2">
                 <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
                     私人聊天室

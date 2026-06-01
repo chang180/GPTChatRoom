@@ -5,7 +5,7 @@
 ## 文件索引
 
 - [`architecture.md`](architecture.md): 專案結構、資料流、核心檔案、資料模型
-- [`deployment.md`](deployment.md): **生產環境 pull 佈署必讀**（migration、OpenAI、小結切點）
+- [`deployment.md`](deployment.md): **生產環境 pull 佈署必讀**（migration、OpenAI、小結切點、Google OAuth、**Ably 即時廣播**）
 - [`realtime-websocket-plan.md`](realtime-websocket-plan.md): 現況分析、外部服務選型、WebSocket 導入計畫
 - [`phase-2-checklist.md`](phase-2-checklist.md): Ably Phase 1 之後的下一階段工作清單
 
@@ -33,7 +33,7 @@
 
 - 在線狀態 / typing / 已讀等 presence 類功能
 - 私人房成員管理 UI（移除成員等；API 已存在）
-- 佇署環境：Google 與 Ably 私頻需人類端到端驗證（見 [`deployment.md`](deployment.md)）
+- 佇署環境：Google OAuth 與 Ably 多人同步需人類端到端驗證（見 [`deployment.md`](deployment.md)；本機預設不連 Ably）
 
 ## 建議閱讀順序
 

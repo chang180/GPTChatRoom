@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\UnlinkGoogleAccountRequest;
 use App\Models\User;
+use App\Support\PendingChatRoomInvitation;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
 use Laravel\Socialite\Contracts\User as SocialiteUser;
@@ -53,7 +54,7 @@ class GoogleAuthController extends Controller
         if ($user) {
             Auth::login($user, true);
 
-            return redirect()->intended(route('dashboard'));
+            return PendingChatRoomInvitation::completeAfterAuthentication(request());
         }
 
         // 2. email 已存在但未綁定 → 不建立新帳號（ADR-004）。
@@ -74,7 +75,7 @@ class GoogleAuthController extends Controller
 
         Auth::login($user, true);
 
-        return redirect()->intended(route('dashboard'));
+        return PendingChatRoomInvitation::completeAfterAuthentication(request());
     }
 
     /**

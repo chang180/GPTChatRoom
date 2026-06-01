@@ -73,6 +73,49 @@ php artisan migrate --force
 - 使用電子郵件／密碼（Fortify）；登入頁會顯示 Google 不可用說明。
 - 勿將 production 的 redirect URI 指到 `localhost`，除非另行在 Console 登錄且你確定要測本機 OAuth（本專案預設仍由 `local` 環境關閉）。
 
+## Ably 即時廣播（房間級多人同步）
+
+房間內「他人新訊息、AI 最終訊息、清除聊天室」依賴 Laravel Broadcasting + Ably + 前端 Echo。**AI 串流仍走 SSE**，與 Ably 無關。
+
+### 本機開發（預設）
+
+- `.env.example` 預設 `BROADCAST_CONNECTION=log`：事件只寫入 log，**不會**推到 Ably。
+- 未設定 `VITE_ABLY_ENABLED=true` 時，前端不會建立 `window.Echo`，本機單人開發（自己送訊、SSE 看 AI）可正常運作。
+- **另一分頁／另一位使用者不會即時同步**——在此設定下屬預期，不是程式故障。
+- 若要在本機驗證多人同步：向 [Ably](https://ably.com/) 申請 key，改為 `BROADCAST_CONNECTION=ably`、填入 `ABLY_KEY`、設 `VITE_ABLY_ENABLED=true`，並重新執行 `npm run dev`（或 `npm run build`）。
+
+`config/broadcasting.php` 另有一項保護：若設為 `ably` 但未填 `ABLY_KEY`，會自動退回 `log`。
+
+### 佈署時（staging / production）
+
+**務必**設定下列變數，否則正式環境不會有多人即時同步：
+
+```env
+BROADCAST_CONNECTION=ably
+ABLY_KEY=your_ably_api_key
+ABLY_TOKEN_EXPIRY=3600
+VITE_ABLY_ENABLED=true
+```
+
+佇署流程補充：
+
+1. 佇署後執行 `npm ci && npm run build`（`VITE_ABLY_ENABLED` 在 build 時寫入前端）。
+2. `php artisan config:cache` 後確認 `config('broadcasting.default')` 為 `ably`。
+3. 若使用 **revocable** Ably key，`ABLY_TOKEN_EXPIRY` 不得超過 3600（秒）。
+
+前端透過 `POST /broadcasting/auth` 授權；**私人房**使用 `Echo.private()`，**主題房**使用 `Echo.channel()`。API key 僅在伺服器 `.env`，勿放入 `VITE_*`。
+
+### 佇署後 Ably 驗證（由維運／人類在 staging / production 執行）
+
+自動化測試只覆蓋事件 `broadcastOn` 與 channel 授權，**不連 Ably 雲端**。請在已佈署環境手動確認：
+
+- [ ] 瀏覽器 Console：`window.Echo` 存在；Ably 連線為 `connected`
+- [ ] 主題房：兩個帳號／兩個瀏覽器進同一主題，一方發 direct message，另一方即時出現
+- [ ] 私人房：成員雙方同上；`/broadcasting/auth` 對非成員為 403
+- [ ] 清除聊天室後，同房另一端列表清空
+
+驗證失敗時常見原因：`BROADCAST_CONNECTION` 仍為 `log`／`null`、未 build 前端、`ABLY_KEY` 錯誤、未登入導致 private channel 授權失敗。
+
 ### 新增資料庫物件
 
 Migration（依序執行；`php artisan migrate` 會自動套用尚未執行的檔案）：
@@ -114,6 +157,8 @@ php artisan test tests/Feature/Controllers/ChatRoomControllerTest.php
 - [ ] `composer install --no-dev` 完成
 - [ ] `php artisan migrate --force` 成功
 - [ ] `OPENAI_API_KEY` 已設定
+- [ ] `BROADCAST_CONNECTION=ably`、`ABLY_KEY`、`VITE_ABLY_ENABLED=true` 已設定，且已 `npm run build`
 - [ ] （可選）`php artisan config:cache` 等
 - [ ] （可選）執行相關 Pest 測試
 - [ ] 以實際聊天室 smoke test 一則 AI 訊息
+- [ ] （可選）主題房或私人房雙瀏覽器即時同步 smoke test

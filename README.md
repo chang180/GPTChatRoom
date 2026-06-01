@@ -34,7 +34,7 @@ Laravel 13 + Inertia.js + Vue 3 的聊天學習專案，目標是整理出一個
 
 ## 生產環境佈署
 
-以 `git pull` 更新後，**務必**執行 `php artisan migrate --force`，並確認 `OPENAI_API_KEY` 有效。細節與 agent 檢查清單見 [`docs/deployment.md`](docs/deployment.md)。
+以 `git pull` 更新後，**務必**執行 `php artisan migrate --force`，並確認 `OPENAI_API_KEY` 有效。**多人即時同步**須在 staging／production 設定 Ably（本機預設 `BROADCAST_CONNECTION=log`，可不連）。細節與 agent 檢查清單見 [`docs/deployment.md`](docs/deployment.md)。
 
 ## 專案文件
 
@@ -57,16 +57,14 @@ npm run dev
 php artisan serve
 ```
 
-在 `.env` 設定：
+在 `.env` 至少設定（本機開發）：
 
 ```env
 OPENAI_API_KEY=your_openai_api_key
 OPENAI_ORGANIZATION=your_openai_organization
-BROADCAST_CONNECTION=ably
-ABLY_KEY=your_ably_key
-ABLY_TOKEN_EXPIRY=3600
-VITE_ABLY_ENABLED=true
 ```
+
+本機預設 **不必** 設定 Ably（`.env.example` 為 `BROADCAST_CONNECTION=log`，多人即時不同步屬正常）。若要在本機測雙瀏覽器同步，或於佇署環境啟用，請見 [`docs/deployment.md`](docs/deployment.md) § Ably 即時廣播。
 
 ## 開發指令
 

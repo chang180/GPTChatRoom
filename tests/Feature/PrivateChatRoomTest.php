@@ -6,8 +6,11 @@ use App\Models\ChatRoomMember;
 use App\Models\Message;
 use App\Models\User;
 use App\Services\GPTService;
+use App\Support\PendingChatRoomInvitation;
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\PrivateChannel;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Crypt;
 use Inertia\Testing\AssertableInertia as Assert;
 
 use function Pest\Laravel\actingAs;
@@ -99,6 +102,54 @@ it('forbids a non-owner from generating an invitation', function () {
         ->assertForbidden();
 });
 
+it('redirects guests to login and stores a pending invitation cookie', function () {
+    $owner = User::factory()->create();
+    $room = privateRoomWithOwner($owner);
+    $invitation = $room->invitations()->create([
+        'token' => 'guest-pending-token',
+        'invited_by' => $owner->id,
+        'expires_at' => now()->addDay(),
+    ]);
+
+    $response = $this->get(route('chat.invitations.accept', $invitation->token));
+
+    $response->assertRedirect(route('login'));
+    $response->assertSessionHas('status');
+    $response->assertCookie(PendingChatRoomInvitation::COOKIE_NAME);
+
+    expect($room->memberRecords()->count())->toBe(1);
+});
+
+it('joins the room after authentication when a pending invitation cookie exists', function () {
+    $owner = User::factory()->create();
+    $invitee = User::factory()->create();
+    $room = privateRoomWithOwner($owner);
+    $invitation = $room->invitations()->create([
+        'token' => 'pending-after-login',
+        'invited_by' => $owner->id,
+        'expires_at' => now()->addDay(),
+    ]);
+
+    $request = Request::create('/dashboard', 'GET');
+    $request->cookies->set(
+        PendingChatRoomInvitation::COOKIE_NAME,
+        Crypt::encryptString($invitation->token),
+    );
+    $request->setUserResolver(fn () => $invitee);
+
+    $response = \Illuminate\Testing\TestResponse::fromBaseResponse(
+        PendingChatRoomInvitation::completeAfterAuthentication($request)
+    );
+
+    $response->assertRedirect(route('chat.private.show', $room));
+
+    $this->assertDatabaseHas('chat_room_members', [
+        'chat_room_id' => $room->id,
+        'user_id' => $invitee->id,
+        'role' => 'member',
+    ]);
+});
+
 it('lets a logged-in user accept a valid invitation', function () {
     $owner = User::factory()->create();
     $invitee = User::factory()->create();
@@ -110,7 +161,7 @@ it('lets a logged-in user accept a valid invitation', function () {
     ]);
 
     actingAs($invitee)
-        ->post(route('chat.invitations.accept', $invitation->token))
+        ->get(route('chat.invitations.accept', $invitation->token))
         ->assertRedirect(route('chat.private.show', $room));
 
     $this->assertDatabaseHas('chat_room_members', [
@@ -131,8 +182,9 @@ it('rejects accepting an expired invitation', function () {
     ]);
 
     actingAs($invitee)
-        ->post(route('chat.invitations.accept', $invitation->token))
-        ->assertStatus(422);
+        ->get(route('chat.invitations.accept', $invitation->token))
+        ->assertRedirect(route('dashboard'))
+        ->assertSessionHas('error', '邀請連結已過期。');
 
     $this->assertDatabaseMissing('chat_room_members', [
         'chat_room_id' => $room->id,
@@ -152,8 +204,9 @@ it('rejects accepting a revoked invitation', function () {
     ]);
 
     actingAs($invitee)
-        ->post(route('chat.invitations.accept', $invitation->token))
-        ->assertStatus(403);
+        ->get(route('chat.invitations.accept', $invitation->token))
+        ->assertRedirect(route('dashboard'))
+        ->assertSessionHas('error', '邀請連結已被撤銷。');
 });
 
 it('rejects accepting when the room is already full', function () {
@@ -177,8 +230,9 @@ it('rejects accepting when the room is already full', function () {
     ]);
 
     actingAs($invitee)
-        ->post(route('chat.invitations.accept', $invitation->token))
-        ->assertStatus(422);
+        ->get(route('chat.invitations.accept', $invitation->token))
+        ->assertRedirect(route('dashboard'))
+        ->assertSessionHas('error', '此私人房成員已滿。');
 
     expect($room->memberRecords()->count())->toBe(ChatRoom::MAX_MEMBERS);
 });

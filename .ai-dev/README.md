@@ -7,7 +7,7 @@
 - **Agent 總索引（套件版本 / 規範）：** [`../AGENTS.md`](../AGENTS.md) →  canonical [`.cursor/rules/laravel-boost.mdc`](../.cursor/rules/laravel-boost.mdc)
 - **分 phase 實作（private-room）：** [`.ai-dev/private-room/handoff.md`](private-room/handoff.md)（Phase 1–5 已完成，見 `progress.md`）
 - 專案開發文件：[`../docs/README.md`](../docs/README.md)
-- **生產佈署提醒**：[`../docs/deployment.md`](../docs/deployment.md)（pull 後必跑 migration、Google OAuth 驗證）
+- **生產佈署提醒**：[`../docs/deployment.md`](../docs/deployment.md)（migration、Google OAuth、**Ably 即時廣播**；本機預設 `BROADCAST_CONNECTION=log`）
 - 架構說明：[`../docs/architecture.md`](../docs/architecture.md)
 - 即時通訊規劃：[`../docs/realtime-websocket-plan.md`](../docs/realtime-websocket-plan.md)
 
@@ -32,7 +32,7 @@
 - 前端 **`ChatSidebar`**：主題區 + 私人房列表、建立房／邀請 modal；`ChatRoom.vue` 依 `roomMode` 使用 `Echo.private()` 或 `Echo.channel()`
 - Dashboard / Welcome / AppLayout 三入口（公開聊天、私人聊天、設定）
 - 訊息持久化、歷史分頁、direct / AI 模式、GPT SSE 串流、對話小結切點、清除聊天室（權限依房型：主題房規則 vs 私人房僅 owner）
-- Ably WebSocket + Laravel Echo；多瀏覽器房間同步
+- Ably WebSocket + Laravel Echo；多瀏覽器房間同步（**佇署必設 Ably**；本機預設 log 不同步，見 `deployment.md` § Ably）
 
 ### 尚未完成
 
@@ -79,7 +79,7 @@
 
 下一階段優先順序：
 
-1. 佇署環境：Google OAuth + Ably 私頻端到端（見 `docs/deployment.md`）
+1. 佇署環境：Google OAuth + Ably 多人同步端到端（見 `docs/deployment.md`）
 2. 依 [`../docs/phase-2-checklist.md`](../docs/phase-2-checklist.md) 補 broadcast 整合測試（可選）
 3. presence / typing（需 presence channel 設計）
 4. 私人房成員管理 UI（移除成員等）

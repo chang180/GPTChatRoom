@@ -2,13 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\AcceptChatRoomInvitation;
 use App\Http\Requests\StorePrivateChatRoomRequest;
 use App\Models\ChatRoom;
 use App\Models\ChatRoomInvitation;
 use App\Models\ChatRoomMember;
 use App\Models\User;
 use App\Services\MessageCacheService;
-use Illuminate\Support\Carbon;
+use App\Support\PendingChatRoomInvitation;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -105,41 +106,23 @@ class PrivateChatRoomController extends Controller
     }
 
     /**
-     * 接受邀請（僅已登入；token 須有效且房未滿，ADR-005）。
+     * 接受邀請：已登入直接加入；未登入寫入 cookie 並導向登入（ADR-005）。
      */
-    public function acceptInvitation(string $token)
+    public function acceptInvitation(string $token, AcceptChatRoomInvitation $acceptChatRoomInvitation)
     {
-        $invitation = ChatRoomInvitation::where('token', $token)->first();
-
-        abort_if($invitation === null, 404);
-        abort_if($invitation->revoked_at !== null, 403, '邀請連結已被撤銷。');
-        abort_if(! $invitation->isValid(), 422, '邀請連結已過期。');
-
-        $chatRoom = $invitation->chatRoom;
-        $user = Auth::user();
-
-        if ($chatRoom->hasMember($user)) {
-            return redirect()->route('chat.private.show', $chatRoom);
-        }
-
-        abort_if(
-            $chatRoom->memberRecords()->count() >= ChatRoom::MAX_MEMBERS,
-            422,
-            '此私人房成員已滿。'
+        abort_unless(
+            ChatRoomInvitation::where('token', $token)->exists(),
+            404
         );
 
-        $chatRoom->memberRecords()->create([
-            'user_id' => $user->id,
-            'role' => ChatRoomMember::ROLE_MEMBER,
-            'joined_at' => now(),
-        ]);
+        if (! Auth::check()) {
+            PendingChatRoomInvitation::remember($token);
 
-        $invitation->forceFill([
-            'accepted_at' => Carbon::now(),
-            'accepted_by' => $user->id,
-        ])->save();
+            return redirect()->route('login')
+                ->with('status', '請登入或註冊，登入後將自動加入私人聊天室。');
+        }
 
-        return redirect()->route('chat.private.show', $chatRoom);
+        return $acceptChatRoomInvitation->accept(Auth::user(), $token);
     }
 
     /**
