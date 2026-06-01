@@ -19,7 +19,7 @@
 - **即時**: ably/laravel-broadcaster
 
 ### 前端技術堆疊
-- **Inertia (client)**: @inertiajs/vue3 v1.x
+- **Inertia (client)**: @inertiajs/vue3 v3.x
 - **Vue.js**: v3.x
 - **Tailwind CSS**: v3.4.0
 - **Vite**: v6.2.0 (建置工具)

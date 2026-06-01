@@ -34,6 +34,11 @@
             })();
         </script>
 
+        {{-- Echo 僅在後端 ably + ABLY_KEY 就緒時啟用（與 config/broadcasting.php client_enabled 一致） --}}
+        <script>
+            window.__broadcasting = @json(['enabled' => (bool) config('broadcasting.client_enabled')]);
+        </script>
+
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />

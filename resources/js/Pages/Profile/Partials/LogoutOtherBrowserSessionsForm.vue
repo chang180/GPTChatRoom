@@ -45,43 +45,37 @@ const closeModal = () => {
 <template>
     <ActionSection>
         <template #title>
-            Browser Sessions
+            瀏覽器工作階段
         </template>
 
         <template #description>
-            Manage and log out your active sessions on other browsers and devices.
+            管理並登出其他裝置或瀏覽器上的登入狀態。
         </template>
 
         <template #content>
-            <div class="max-w-xl text-sm text-gray-600">
-                If necessary, you may log out of all of your other browser sessions across all of your devices. Some of your recent sessions are listed below; however, this list may not be exhaustive. If you feel your account has been compromised, you should also update your password.
+            <div class="max-w-xl text-sm text-gray-600 dark:text-gray-400">
+                若有需要，可一次登出所有其他裝置上的工作階段。下方為近期登入紀錄（可能不完整）。若懷疑帳號外洩，請一併更新密碼。
             </div>
 
-            <!-- Other Browser Sessions -->
-            <div v-if="sessions.length > 0" class="mt-5 space-y-6">
-                <div v-for="(session, i) in sessions" :key="i" class="flex items-center">
-                    <div>
-                        <svg v-if="session.agent.is_desktop" class="w-8 h-8 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0V12a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 12V5.25" />
-                        </svg>
-
-                        <svg v-else class="w-8 h-8 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3" />
-                        </svg>
+            <div v-if="sessions.length > 0" class="mt-5 space-y-4">
+                <div
+                    v-for="(session, i) in sessions"
+                    :key="i"
+                    class="flex items-center p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50 border border-gray-100 dark:border-gray-600"
+                >
+                    <div class="text-gray-500 dark:text-gray-400">
+                        <i v-if="session.agent.is_desktop" class="fas fa-desktop text-xl"></i>
+                        <i v-else class="fas fa-mobile-alt text-xl"></i>
                     </div>
 
-                    <div class="ms-3">
-                        <div class="text-sm text-gray-600">
-                            {{ session.agent.platform ? session.agent.platform : 'Unknown' }} - {{ session.agent.browser ? session.agent.browser : 'Unknown' }}
+                    <div class="ms-3 min-w-0">
+                        <div class="text-sm font-medium text-gray-700 dark:text-gray-200 truncate">
+                            {{ session.agent.platform || '未知平台' }} · {{ session.agent.browser || '未知瀏覽器' }}
                         </div>
-
-                        <div>
-                            <div class="text-xs text-gray-500">
-                                {{ session.ip_address }},
-
-                                <span v-if="session.is_current_device" class="text-green-500 font-semibold">This device</span>
-                                <span v-else>Last active {{ session.last_active }}</span>
-                            </div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                            {{ session.ip_address }}
+                            <span v-if="session.is_current_device" class="text-green-600 dark:text-green-400 font-semibold ms-1">（此裝置）</span>
+                            <span v-else class="ms-1">· 上次活動 {{ session.last_active }}</span>
                         </div>
                     </div>
                 </div>
@@ -89,30 +83,31 @@ const closeModal = () => {
 
             <div class="flex items-center mt-5">
                 <PrimaryButton @click="confirmLogout">
-                    Log Out Other Browser Sessions
+                    <i class="fas fa-sign-out-alt mr-1"></i> 登出其他工作階段
                 </PrimaryButton>
 
                 <ActionMessage :on="form.recentlySuccessful" class="ms-3">
-                    Done.
+                    已完成。
                 </ActionMessage>
             </div>
 
-            <!-- Log Out Other Devices Confirmation Modal -->
             <DialogModal :show="confirmingLogout" @close="closeModal">
                 <template #title>
-                    Log Out Other Browser Sessions
+                    登出其他工作階段
                 </template>
 
                 <template #content>
-                    Please enter your password to confirm you would like to log out of your other browser sessions across all of your devices.
+                    <p class="text-sm text-gray-600 dark:text-gray-400">
+                        請輸入密碼以確認登出所有其他裝置上的工作階段。
+                    </p>
 
                     <div class="mt-4">
                         <TextInput
                             ref="passwordInput"
                             v-model="form.password"
                             type="password"
-                            class="mt-1 block w-3/4"
-                            placeholder="Password"
+                            class="mt-1 block w-full dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                            placeholder="請輸入密碼"
                             autocomplete="current-password"
                             @keyup.enter="logoutOtherBrowserSessions"
                         />
@@ -123,7 +118,7 @@ const closeModal = () => {
 
                 <template #footer>
                     <SecondaryButton @click="closeModal">
-                        Cancel
+                        取消
                     </SecondaryButton>
 
                     <PrimaryButton
@@ -132,7 +127,7 @@ const closeModal = () => {
                         :disabled="form.processing"
                         @click="logoutOtherBrowserSessions"
                     >
-                        Log Out Other Browser Sessions
+                        確認登出
                     </PrimaryButton>
                 </template>
             </DialogModal>

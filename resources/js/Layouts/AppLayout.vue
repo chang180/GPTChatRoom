@@ -59,7 +59,7 @@ const logout = () => {
                                     :href="route('dashboard')"
                                     :active="route().current('dashboard')"
                                 >
-                                    Dashboard
+                                    主控台
                                 </NavLink>
                                 <NavLink
                                     :href="route('chat.index')"
@@ -219,20 +219,22 @@ const logout = () => {
                                 </Dropdown>
                             </div>
 
-                            <!-- Settings Dropdown -->
+                            <!-- 帳號選單 -->
                             <div class="relative ms-3">
-                                <Dropdown align="right" width="48">
+                                <Dropdown align="right" width="52">
                                     <template #trigger>
-                                        <span class="inline-flex rounded-md">
+                                        <span class="inline-flex rounded-lg">
                                             <button
                                                 type="button"
-                                                class="inline-flex items-center px-3 py-2 text-sm font-medium leading-4 text-gray-500 dark:text-gray-400 transition duration-150 ease-in-out bg-white dark:bg-gray-800 border border-transparent rounded-md hover:text-gray-700 dark:hover:text-gray-300 focus:outline-none focus:bg-gray-50 dark:focus:bg-gray-700 active:bg-gray-50 dark:active:bg-gray-700"
+                                                class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 transition duration-150 ease-in-out bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
                                             >
-                                                <i class="fas fa-user-circle mr-2 text-lg"></i>
-                                                {{ $page.props.auth.user.name }}
+                                                <span class="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 text-sm font-semibold">
+                                                    {{ $page.props.auth.user.name?.charAt(0)?.toUpperCase() }}
+                                                </span>
+                                                <span class="max-w-[8rem] truncate hidden md:inline">{{ $page.props.auth.user.name }}</span>
 
                                                 <svg
-                                                    class="ms-2 -me-0.5 h-4 w-4"
+                                                    class="h-4 w-4 text-gray-400"
                                                     xmlns="http://www.w3.org/2000/svg"
                                                     fill="none"
                                                     viewBox="0 0 24 24"
@@ -251,24 +253,29 @@ const logout = () => {
 
                                     <template #content>
                                         <!-- Account Management -->
-                                        <div
-                                            class="block px-4 py-2 text-xs text-gray-400 dark:text-gray-500"
-                                        >
-                                            Manage Account
+                                        <div class="px-4 py-3 border-b border-gray-100 dark:border-gray-600">
+                                            <p class="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
+                                                {{ $page.props.auth.user.name }}
+                                            </p>
+                                            <p class="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
+                                                {{ $page.props.auth.user.email }}
+                                            </p>
                                         </div>
 
                                         <DropdownLink
                                             :href="route('profile.show')"
+                                            class="flex items-center gap-2"
                                         >
-                                            Profile
+                                            <i class="fas fa-cog w-4 text-gray-400"></i>
+                                            個人設定
                                         </DropdownLink>
 
                                         <div class="border-t border-gray-200 dark:border-gray-600" />
 
-                                        <!-- Authentication -->
                                         <form @submit.prevent="logout">
-                                            <DropdownLink as="button">
-                                                Log Out
+                                            <DropdownLink as="button" class="flex items-center gap-2 text-red-600 dark:text-red-400">
+                                                <i class="fas fa-sign-out-alt w-4"></i>
+                                                登出
                                             </DropdownLink>
                                         </form>
                                     </template>
@@ -332,7 +339,7 @@ const logout = () => {
                             :href="route('dashboard')"
                             :active="route().current('dashboard')"
                         >
-                            Dashboard
+                            主控台
                         </ResponsiveNavLink>
                         <ResponsiveNavLink
                             :href="route('chat.index')"
@@ -372,14 +379,12 @@ const logout = () => {
                                 :href="route('profile.show')"
                                 :active="route().current('profile.show')"
                             >
-                                Profile
+                                <i class="fas fa-cog mr-2"></i>個人設定
                             </ResponsiveNavLink>
 
-
-                            <!-- Authentication -->
                             <form method="POST" @submit.prevent="logout">
-                                <ResponsiveNavLink as="button">
-                                    Log Out
+                                <ResponsiveNavLink as="button" class="text-red-600 dark:text-red-400">
+                                    <i class="fas fa-sign-out-alt mr-2"></i>登出
                                 </ResponsiveNavLink>
                             </form>
 

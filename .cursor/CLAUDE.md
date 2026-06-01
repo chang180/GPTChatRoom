@@ -63,7 +63,7 @@ This is a **Laravel 13 + Vue.js 3 + Inertia.js** chat application that integrate
 
 ### Key Technology Stack
 - **Backend**: Laravel 13 with PHP 8.4, Laravel Jetstream 5, Laravel Sanctum 4, `inertiajs/inertia-laravel` 3
-- **Frontend**: Vue.js 3, `@inertiajs/vue3` 1.x, Tailwind CSS 3.4
+- **Frontend**: Vue.js 3, `@inertiajs/vue3` 3.x, Tailwind CSS 3.4
 - **Build Tool**: Vite 6.2
 - **Database**: SQLite (development), MySQL (production option)
 - **AI Integration**: `openai-php/laravel` ^0.19 with GPT-5-nano model

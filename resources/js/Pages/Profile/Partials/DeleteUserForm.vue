@@ -40,40 +40,41 @@ const closeModal = () => {
 <template>
     <ActionSection>
         <template #title>
-            Delete Account
+            刪除帳號
         </template>
 
         <template #description>
-            Permanently delete your account.
+            永久刪除此帳號與所有相關資料。
         </template>
 
         <template #content>
-            <div class="max-w-xl text-sm text-gray-600">
-                Once your account is deleted, all of its resources and data will be permanently deleted. Before deleting your account, please download any data or information that you wish to retain.
+            <div class="max-w-xl text-sm text-gray-600 dark:text-gray-400">
+                帳號刪除後將無法復原。若需保留資料，請在刪除前先自行備份。
             </div>
 
             <div class="mt-5">
                 <DangerButton @click="confirmUserDeletion">
-                    Delete Account
+                    <i class="fas fa-trash-alt mr-1"></i> 刪除帳號
                 </DangerButton>
             </div>
 
-            <!-- Delete Account Confirmation Modal -->
             <DialogModal :show="confirmingUserDeletion" @close="closeModal">
                 <template #title>
-                    Delete Account
+                    確認刪除帳號
                 </template>
 
                 <template #content>
-                    Are you sure you want to delete your account? Once your account is deleted, all of its resources and data will be permanently deleted. Please enter your password to confirm you would like to permanently delete your account.
+                    <p class="text-sm text-gray-600 dark:text-gray-400">
+                        確定要刪除帳號嗎？此操作無法復原。請輸入密碼以確認。
+                    </p>
 
                     <div class="mt-4">
                         <TextInput
                             ref="passwordInput"
                             v-model="form.password"
                             type="password"
-                            class="mt-1 block w-3/4"
-                            placeholder="Password"
+                            class="mt-1 block w-full dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                            placeholder="請輸入密碼"
                             autocomplete="current-password"
                             @keyup.enter="deleteUser"
                         />
@@ -84,7 +85,7 @@ const closeModal = () => {
 
                 <template #footer>
                     <SecondaryButton @click="closeModal">
-                        Cancel
+                        取消
                     </SecondaryButton>
 
                     <DangerButton
@@ -93,7 +94,7 @@ const closeModal = () => {
                         :disabled="form.processing"
                         @click="deleteUser"
                     >
-                        Delete Account
+                        確認刪除
                     </DangerButton>
                 </template>
             </DialogModal>

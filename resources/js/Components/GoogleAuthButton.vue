@@ -7,6 +7,10 @@ defineProps({
         type: String,
         default: '使用 Google 繼續',
     },
+    intent: {
+        type: String,
+        default: 'login',
+    },
 });
 
 const page = usePage();
@@ -28,7 +32,7 @@ const oauth = computed(() => page.props.googleOAuth ?? { enabled: false, disable
         <!-- 啟用：導向 Google（整頁跳轉，非 Inertia） -->
         <a
             v-if="oauth.enabled"
-            :href="route('auth.google.redirect')"
+            :href="route('auth.google.redirect', { intent })"
             class="w-full inline-flex items-center justify-center gap-2 py-3 px-4 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 font-medium hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
         >
             <i class="fab fa-google text-red-500"></i>

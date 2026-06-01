@@ -25,7 +25,7 @@ Use the **Laravel Boost MCP** `search-docs` tool before changing Laravel/Inertia
 Upgraded **2026-06-01** (private-room Phase 1). Details and rules: `laravel-boost.mdc`.
 
 - **Laravel 13**, PHP **8.4**
-- **inertiajs/inertia-laravel 3** + **@inertiajs/vue3 1.x**
+- **inertiajs/inertia-laravel 3** + **@inertiajs/vue3 3.x**
 - **Jetstream 5**, **Fortify**, **Sanctum 4**
 - **Pest 4**, **openai-php/laravel 0.19**
 - **Ably** broadcasting, **Vite 6**, **Vue 3**, **Tailwind 3**

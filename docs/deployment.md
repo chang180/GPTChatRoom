@@ -80,7 +80,7 @@ php artisan migrate --force
 ### 本機開發（預設）
 
 - `.env.example` 預設 `BROADCAST_CONNECTION=log`：事件只寫入 log，**不會**推到 Ably。
-- 未設定 `VITE_ABLY_ENABLED=true` 時，前端不會建立 `window.Echo`，本機單人開發（自己送訊、SSE 看 AI）可正常運作。
+- 未設定 `VITE_ABLY_ENABLED=true`，或後端 `ABLY_KEY` 缺失／`BROADCAST_CONNECTION` 非 `ably` 時，前端**不會**建立 `window.Echo`（`config('broadcasting.client_enabled')` 為 false），本機單人開發可正常運作。
 - **另一分頁／另一位使用者不會即時同步**——在此設定下屬預期，不是程式故障。
 - 若要在本機驗證多人同步：向 [Ably](https://ably.com/) 申請 key，改為 `BROADCAST_CONNECTION=ably`、填入 `ABLY_KEY`、設 `VITE_ABLY_ENABLED=true`，並重新執行 `npm run dev`（或 `npm run build`）。
 

@@ -19,6 +19,12 @@ class GoogleAuthController extends Controller
     {
         abort_unless(config('services.google.enabled'), 404);
 
+        if (request()->query('intent') === 'register') {
+            session(['google_oauth_intent' => 'register']);
+        } else {
+            session()->forget('google_oauth_intent');
+        }
+
         return Socialite::driver('google')->redirect();
     }
 
@@ -59,8 +65,12 @@ class GoogleAuthController extends Controller
 
         // 2. email 已存在但未綁定 → 不建立新帳號（ADR-004）。
         if (User::where('email', $googleUser->getEmail())->exists()) {
-            return redirect()->route('login')
-                ->with('error', '此電子郵件已註冊，請先以電子郵件與密碼登入，再至個人設定綁定 Google 帳號。');
+            $authRoute = session()->pull('google_oauth_intent') === 'register'
+                ? 'register'
+                : 'login';
+
+            return redirect()->route($authRoute)
+                ->with('error', '此電子郵件已註冊。請改以電子郵件與密碼登入；登入後可至個人設定綁定 Google 帳號。');
         }
 
         // 3. 建立新帳號（無密碼）並登入。

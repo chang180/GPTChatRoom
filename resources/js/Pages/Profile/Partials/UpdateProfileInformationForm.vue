@@ -47,7 +47,9 @@ const selectNewPhoto = () => {
 const updatePhotoPreview = () => {
     const photo = photoInput.value.files[0];
 
-    if (! photo) return;
+    if (! photo) {
+        return;
+    }
 
     const reader = new FileReader();
 
@@ -78,17 +80,15 @@ const clearPhotoFileInput = () => {
 <template>
     <FormSection @submitted="updateProfileInformation">
         <template #title>
-            Profile Information
+            個人資料
         </template>
 
         <template #description>
-            Update your account's profile information and email address.
+            更新顯示名稱、電子郵件與大頭貼。
         </template>
 
         <template #form>
-            <!-- Profile Photo -->
             <div v-if="$page.props.jetstream.managesProfilePhotos" class="col-span-6 sm:col-span-4">
-                <!-- Profile Photo File Input -->
                 <input
                     id="photo"
                     ref="photoInput"
@@ -97,81 +97,77 @@ const clearPhotoFileInput = () => {
                     @change="updatePhotoPreview"
                 >
 
-                <InputLabel for="photo" value="Photo" />
+                <InputLabel for="photo" value="大頭貼" />
 
-                <!-- Current Profile Photo -->
                 <div v-show="! photoPreview" class="mt-2">
-                    <img :src="user.profile_photo_url" :alt="user.name" class="rounded-full h-20 w-20 object-cover">
+                    <img :src="user.profile_photo_url" :alt="user.name" class="rounded-full h-20 w-20 object-cover ring-2 ring-gray-200 dark:ring-gray-600">
                 </div>
 
-                <!-- New Profile Photo Preview -->
                 <div v-show="photoPreview" class="mt-2">
                     <span
-                        class="block rounded-full w-20 h-20 bg-cover bg-no-repeat bg-center"
+                        class="block rounded-full w-20 h-20 bg-cover bg-no-repeat bg-center ring-2 ring-blue-400"
                         :style="'background-image: url(\'' + photoPreview + '\');'"
                     />
                 </div>
 
-                <SecondaryButton class="mt-2 me-2" type="button" @click.prevent="selectNewPhoto">
-                    Select A New Photo
-                </SecondaryButton>
+                <div class="mt-3 flex flex-wrap gap-2">
+                    <SecondaryButton type="button" @click.prevent="selectNewPhoto">
+                        <i class="fas fa-camera mr-1"></i> 選擇照片
+                    </SecondaryButton>
 
-                <SecondaryButton
-                    v-if="user.profile_photo_path"
-                    type="button"
-                    class="mt-2"
-                    @click.prevent="deletePhoto"
-                >
-                    Remove Photo
-                </SecondaryButton>
+                    <SecondaryButton
+                        v-if="user.profile_photo_path"
+                        type="button"
+                        @click.prevent="deletePhoto"
+                    >
+                        移除照片
+                    </SecondaryButton>
+                </div>
 
                 <InputError :message="form.errors.photo" class="mt-2" />
             </div>
 
-            <!-- Name -->
             <div class="col-span-6 sm:col-span-4">
-                <InputLabel for="name" value="Name" />
+                <InputLabel for="name" value="顯示名稱" />
                 <TextInput
                     id="name"
                     v-model="form.name"
                     type="text"
-                    class="mt-1 block w-full"
+                    class="mt-1 block w-full dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                     required
                     autocomplete="name"
                 />
                 <InputError :message="form.errors.name" class="mt-2" />
             </div>
 
-            <!-- Email -->
             <div class="col-span-6 sm:col-span-4">
-                <InputLabel for="email" value="Email" />
+                <InputLabel for="email" value="電子郵件" />
                 <TextInput
                     id="email"
                     v-model="form.email"
                     type="email"
-                    class="mt-1 block w-full"
+                    class="mt-1 block w-full dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                     required
                     autocomplete="username"
                 />
                 <InputError :message="form.errors.email" class="mt-2" />
 
-                <div v-if="$page.props.jetstream.hasEmailVerification && user.email_verified_at === null">
-                    <p class="text-sm mt-2">
-                        Your email address is unverified.
-
+                <div v-if="$page.props.jetstream.hasEmailVerification && user.email_verified_at === null" class="mt-3 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+                    <p class="text-sm text-amber-800 dark:text-amber-200">
+                        您的電子郵件尚未驗證。
                         <Link
                             :href="route('verification.send')"
                             method="post"
                             as="button"
-                            class="underline text-sm text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                            class="underline font-medium hover:text-amber-900 dark:hover:text-amber-100 ms-1"
                             @click.prevent="sendEmailVerification"
                         >
-                            Click here to re-send the verification email.
+                            按此重新寄送驗證信
                         </Link>
                     </p>
 
-                    <div v-show="verificationLinkSent" class="mt-2 font-medium text-sm text-green-600">
-                        A new verification link has been sent to your email address.
+                    <div v-show="verificationLinkSent" class="mt-2 text-sm font-medium text-green-600 dark:text-green-400">
+                        新的驗證連結已寄至您的信箱。
                     </div>
                 </div>
             </div>
@@ -179,11 +175,12 @@ const clearPhotoFileInput = () => {
 
         <template #actions>
             <ActionMessage :on="form.recentlySuccessful" class="me-3">
-                Saved.
+                已儲存。
             </ActionMessage>
 
             <PrimaryButton :class="{ 'opacity-25': form.processing }" :disabled="form.processing">
-                Save
+                <i v-if="form.processing" class="fas fa-spinner fa-spin mr-1"></i>
+                儲存
             </PrimaryButton>
         </template>
     </FormSection>

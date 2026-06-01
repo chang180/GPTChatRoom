@@ -15,7 +15,7 @@ This application is a Laravel application and its main Laravel ecosystems packag
 - php - 8.4.x
 - laravel/framework (LARAVEL) - v13
 - inertiajs/inertia-laravel (INERTIA server) - v3
-- @inertiajs/vue3 (INERTIA client) - v1
+- @inertiajs/vue3 (INERTIA client) - v3
 - laravel/jetstream - v5
 - laravel/fortify - v1
 - laravel/sanctum - v4
@@ -142,7 +142,7 @@ Route::get('/users', function () {
 ## Inertia (server v3 + Vue client v1)
 
 - **Server:** `inertiajs/inertia-laravel` v3 — use `search-docs` for adapter APIs.
-- **Client:** `@inertiajs/vue3` v1 — pages under `resources/js/Pages`.
+- **Client:** `@inertiajs/vue3` v3 — pages under `resources/js/Pages`.
 - Do not use inertia-laravel v2-only patterns.
 
 ### Inertia server features (confirm in docs)

@@ -19,33 +19,57 @@ export default defineConfig({
         }),
     ],
     build: {
-        // manifest: true, // 添加这个配置项来生成manifest文件
-        // outDir: 'public/build', // 生成文件的目录
         rollupOptions: {
-            input: {
-                app: 'resources/js/app.js', // 入口文件
+            output: {
+                manualChunks(id) {
+                    if (!id.includes('node_modules')) {
+                        return;
+                    }
+
+                    if (id.includes('ably') || id.includes('@ably')) {
+                        return 'vendor-ably';
+                    }
+
+                    if (id.includes('marked')) {
+                        return 'vendor-marked';
+                    }
+
+                    if (
+                        id.includes('vue')
+                        || id.includes('@vue')
+                        || id.includes('@inertiajs')
+                    ) {
+                        return 'vendor-vue';
+                    }
+
+                    if (id.includes('ziggy')) {
+                        return 'vendor-ziggy';
+                    }
+
+                    return 'vendor';
+                },
             },
         },
     },
     resolve: {
         alias: {
             '@': '/resources/js',
-            ziggy: path.resolve('vendor/tightenco/ziggy/dist/vue'), // 添加 ziggy 的別名
+            ziggy: path.resolve('vendor/tightenco/ziggy/dist/vue'),
         },
     },
     server: {
         watch: {
-            usePolling: true, // 使用轮询机制进行文件监视
-            interval: 1000, // 轮询间隔，单位为毫秒
+            usePolling: true,
+            interval: 1000,
         },
-        host: 'localhost', // 限制为 localhost
+        host: 'localhost',
         port: 5173,
         hmr: {
-            host: 'localhost', // HMR 使用 localhost
+            host: 'localhost',
             port: 5173,
-            protocol: 'ws', // 使用 WebSocket 而不是 WSS
-            clientPort: 5173, // 明確指定客戶端端口
+            protocol: 'ws',
+            clientPort: 5173,
         },
-        https: false, // 在 Herd 环境中禁用 HTTPS
+        https: false,
     },
 });

@@ -73,9 +73,23 @@ it('does not create a duplicate account when email already exists without google
     $response = $this->get(route('auth.google.callback'));
 
     $response->assertRedirect(route('login'));
+    $response->assertSessionHas('error');
     $this->assertGuest();
     expect(User::where('email', 'existing@example.com')->count())->toBe(1);
     expect(User::where('email', 'existing@example.com')->first()->google_id)->toBeNull();
+});
+
+it('redirects to register with error when email exists and oauth intent was register', function () {
+    enableGoogleOAuth();
+    User::factory()->create(['email' => 'existing@example.com', 'google_id' => null]);
+    fakeGoogleUser('google-999', 'existing@example.com');
+
+    $response = $this->withSession(['google_oauth_intent' => 'register'])
+        ->get(route('auth.google.callback'));
+
+    $response->assertRedirect(route('register'));
+    $response->assertSessionHas('error');
+    $this->assertGuest();
 });
 
 it('logs in an existing user already linked by google_id', function () {

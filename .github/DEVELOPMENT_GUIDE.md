@@ -9,7 +9,7 @@
 這是一個基於 Laravel 框架的現代化網頁應用程式。
 
 - **後端**: Laravel 13、PHP 8.4、Jetstream 5、Sanctum 4
-- **前端**: Vue 3 + `@inertiajs/vue3` 1.x；伺服端 Inertia adapter v3
+- **前端**: Vue 3 + `@inertiajs/vue3` 3.x；伺服端 Inertia adapter v3
 - **CSS 框架**: Tailwind CSS 3
 - **打包工具**: Vite 6
 - **測試框架**: Pest 4

@@ -1,5 +1,9 @@
 <?php
 
+$defaultBroadcaster = env('BROADCAST_CONNECTION') === 'ably' && ! env('ABLY_KEY')
+    ? 'log'
+    : env('BROADCAST_CONNECTION', 'null');
+
 return [
 
     /*
@@ -15,9 +19,19 @@ return [
     |
     */
 
-    'default' => env('BROADCAST_CONNECTION') === 'ably' && ! env('ABLY_KEY')
-        ? 'log'
-        : env('BROADCAST_CONNECTION', 'null'),
+    'default' => $defaultBroadcaster,
+
+    /*
+    |--------------------------------------------------------------------------
+    | Client-side Echo (Ably)
+    |--------------------------------------------------------------------------
+    |
+    | When false, the browser must not initialize Laravel Echo (e.g. local
+    | BROADCAST_CONNECTION=log or missing ABLY_KEY). Prevents Ably auth errors.
+    |
+    */
+
+    'client_enabled' => $defaultBroadcaster === 'ably' && filled(env('ABLY_KEY')),
 
     /*
     |--------------------------------------------------------------------------

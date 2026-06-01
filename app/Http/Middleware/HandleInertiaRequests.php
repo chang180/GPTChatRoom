@@ -41,6 +41,9 @@ class HandleInertiaRequests extends Middleware
                 'error' => fn () => $request->session()->get('error'),
                 'success' => fn () => $request->session()->get('success'),
             ],
+            'broadcasting' => [
+                'enabled' => (bool) config('broadcasting.client_enabled'),
+            ],
             'googleOAuth' => [
                 'enabled' => (bool) config('services.google.enabled'),
                 'disabledReason' => config('services.google.disabled_reason'),

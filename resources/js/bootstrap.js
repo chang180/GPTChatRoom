@@ -3,11 +3,6 @@ window.axios = axios;
 
 window.axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
 
-import Echo from '@ably/laravel-echo';
-import * as Ably from 'ably';
-
-window.Ably = Ably;
-
 const getAblySocketId = () => {
     const echo = window.Echo;
 
@@ -38,10 +33,31 @@ window.axios.interceptors.request.use((config) => {
     return config;
 });
 
-if (import.meta.env.VITE_ABLY_ENABLED === 'true') {
+const shouldInitializeEcho = () =>
+    import.meta.env.VITE_ABLY_ENABLED === 'true'
+    && window.__broadcasting?.enabled === true;
+
+/**
+ * Ably + Echo 體積大：僅在佇署且後端啟用廣播時動態載入，避免塞進主 chunk。
+ */
+const initializeEcho = async () => {
+    if (!shouldInitializeEcho()) {
+        return;
+    }
+
+    const [{ default: Echo }, ablyModule] = await Promise.all([
+        import('@ably/laravel-echo'),
+        import('ably'),
+    ]);
+
+    window.Ably = ablyModule;
     window.Echo = new Echo({
         broadcaster: 'ably',
         authEndpoint: `${window.location.origin}/broadcasting/auth`,
         withoutInterceptors: true,
     });
+};
+
+if (import.meta.env.VITE_ABLY_ENABLED === 'true') {
+    void initializeEcho();
 }

@@ -17,7 +17,7 @@
 - **框架**: Vue.js 3.3.13
 - **建構工具**: Vite 6.2.0
 - **CSS 框架**: Tailwind CSS 3.4.0
-- **路由**: Inertia.js — server `inertia-laravel` v3, client `@inertiajs/vue3` v1
+- **路由**: Inertia.js — server `inertia-laravel` v3, client `@inertiajs/vue3` v3
 - **Markdown 渲染**: Marked.js
 - **HTTP 客戶端**: Axios
 

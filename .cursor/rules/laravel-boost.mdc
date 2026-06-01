@@ -16,7 +16,7 @@ This application is a Laravel application and its main Laravel ecosystems packag
 - php - 8.4.x (^8.4 in composer.json)
 - laravel/framework (LARAVEL) - v13 (^13.0; lock e.g. v13.12.0)
 - inertiajs/inertia-laravel (INERTIA server) - v3 (^3.0; lock e.g. v3.1.0)
-- @inertiajs/vue3 (INERTIA client) - v1 (^1.0.14)
+- @inertiajs/vue3 (INERTIA client) - v3 (^3.0; lock e.g. v3.3.0)
 - laravel/jetstream (JETSTREAM) - v5
 - laravel/fortify (FORTIFY) - v1
 - laravel/sanctum (SANCTUM) - v4
@@ -169,11 +169,12 @@ Route::get('/users', function () {
 
 === inertia-laravel/v3 rules ===
 
-## Inertia (server v3 + Vue client v1)
+## Inertia (server v3 + Vue client v3)
 
 - **Server:** `inertiajs/inertia-laravel` v3 — use Inertia v3 / Laravel adapter docs via `search-docs`.
-- **Client:** `@inertiajs/vue3` v1 — Vue 3 pages in `resources/js/Pages`; navigation via `@inertiajs/vue3` (`router`, `Link`, `useForm`).
+- **Client:** `@inertiajs/vue3` v3 — Vue 3 pages in `resources/js/Pages`; navigation via `@inertiajs/vue3` (`router`, `Link`, `useForm`). Initial page data comes from `<script data-page>` via `getInitialPageFromDOM` (no `#app` dataset workaround).
 - Do not reference inertia-laravel v2-only install or config patterns; verify against v3 docs before changing middleware, shared data, or SSR setup.
+- `@inertiajs/vite` v3 requires Vite 7+; this project stays on Vite 6 and uses `laravel-vite-plugin` + `resolvePageComponent` in `resources/js/app.js`.
 
 ### Inertia server features (polling, deferred props, etc.; confirm in v3 docs)
 - Polling
