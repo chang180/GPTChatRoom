@@ -56,7 +56,7 @@
 
 ### 3. OpenAI 模型目前寫死，上下文含小結切點
 
-`app/Services/GPTService.php` 使用 `gpt-5-nano`。`ConversationContextService` 在訊息超過 20 則時會先 summarize 並寫入 `conversation_summaries`，再組「小結 + 最近 20 則」送 API。佈署時見 [`../docs/deployment.md`](../docs/deployment.md)。
+`app/Services/GPTService.php` 使用 `gpt-5-nano`。`ConversationContextService` 在 overflow ≥ 5 則時以 `afterResponse` 非同步小結（`config/conversation.php`），聊天請求只帶「截斷後小結 + 最近 20 則」。佈署時見 [`../docs/deployment.md`](../docs/deployment.md)。
 
 ### 4. 即時廣播：主題 public、私人 private
 

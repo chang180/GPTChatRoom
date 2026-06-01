@@ -1,13 +1,12 @@
 <?php
 
+use App\Jobs\SummarizeConversationJob;
 use App\Models\ChatRoom;
 use App\Models\ConversationSummary;
 use App\Models\Message;
 use App\Models\User;
 use App\Services\ConversationContextService;
-use App\Services\GPTService;
-
-use function Pest\Laravel\mock;
+use Illuminate\Support\Facades\Bus;
 
 function seedRoomContextMessages(ChatRoom $chatRoom, User $user, int $count): void
 {
@@ -21,50 +20,93 @@ function seedRoomContextMessages(ChatRoom $chatRoom, User $user, int $count): vo
     }
 }
 
-it('does not summarize when the room has at most twenty context messages', function () {
+it('does not dispatch summarize when the room has at most twenty context messages', function () {
+    Bus::fake();
+
     $user = User::factory()->create();
     ChatRoom::ensureGlobalThemes();
     $room = ChatRoom::getGlobalTheme('work');
 
     seedRoomContextMessages($room, $user, 20);
 
-    $gptMock = mock(GPTService::class);
-    $gptMock->shouldNotReceive('summarizeConversation');
-
-    $service = new ConversationContextService($gptMock);
+    $service = new ConversationContextService(mockGptService());
     $service->ensureSummaryCheckpoint($room);
 
-    expect(ConversationSummary::where('chat_room_id', $room->id)->exists())->toBeFalse();
+    Bus::assertNothingDispatched();
 });
 
-it('summarizes only messages outside the recent window', function () {
+it('does not dispatch summarize when overflow is below the minimum batch size', function () {
+    Bus::fake();
+
     $user = User::factory()->create();
     ChatRoom::ensureGlobalThemes();
     $room = ChatRoom::getGlobalTheme('work');
 
     seedRoomContextMessages($room, $user, 21);
 
-    $oldestMessage = Message::query()
+    $service = new ConversationContextService(mockGptService());
+    $service->ensureSummaryCheckpoint($room);
+
+    Bus::assertNothingDispatched();
+});
+
+it('dispatches summarize after response when enough overflow messages exist', function () {
+    Bus::fake();
+
+    $user = User::factory()->create();
+    ChatRoom::ensureGlobalThemes();
+    $room = ChatRoom::getGlobalTheme('work');
+
+    seedRoomContextMessages($room, $user, 25);
+
+    $service = new ConversationContextService(mockGptService());
+    $service->ensureSummaryCheckpoint($room);
+
+    Bus::assertDispatchedAfterResponse(
+        SummarizeConversationJob::class,
+        fn (SummarizeConversationJob $job) => $job->chatRoomId === $room->id,
+    );
+});
+
+it('summarizes only messages outside the recent window when running the checkpoint', function () {
+    $user = User::factory()->create();
+    ChatRoom::ensureGlobalThemes();
+    $room = ChatRoom::getGlobalTheme('work');
+
+    seedRoomContextMessages($room, $user, 25);
+
+    $fifthMessage = Message::query()
         ->where('chat_room_id', $room->id)
         ->orderBy('id')
+        ->skip(4)
         ->first();
 
-    $gptMock = mock(GPTService::class);
-    $gptMock->shouldReceive('summarizeConversation')
-        ->once()
-        ->with(null, [
-            ['role' => 'user', 'content' => 'Message 1'],
+    $overflowMessages = Message::query()
+        ->where('chat_room_id', $room->id)
+        ->orderBy('id')
+        ->take(5)
+        ->get()
+        ->map(fn (Message $message) => [
+            'role' => $message->sender_type === 'gpt' ? 'assistant' : 'user',
+            'content' => $message->text,
         ])
-        ->andReturn('Summary of message 1');
+        ->values()
+        ->all();
+
+    $gptMock = mockGptService();
+    $gptMock->shouldReceive('summarizeMessages')
+        ->once()
+        ->with($overflowMessages)
+        ->andReturn('Summary of messages 1-5');
 
     $service = new ConversationContextService($gptMock);
-    $service->ensureSummaryCheckpoint($room);
+    $service->runSummarizeCheckpoint($room);
 
     $checkpoint = ConversationSummary::where('chat_room_id', $room->id)->first();
 
-    expect($checkpoint)->not->toBeNull()
-        ->and($checkpoint->content)->toBe('Summary of message 1')
-        ->and($checkpoint->summarized_up_to_message_id)->toBe($oldestMessage->id);
+    expect($checkpoint)->not->toBeNull();
+    expect($checkpoint->content)->toBe('Summary of messages 1-5');
+    expect($checkpoint->summarized_up_to_message_id)->toBe($fifthMessage->id);
 });
 
 it('skips summarization when the checkpoint already covers overflow messages', function () {
@@ -86,14 +128,14 @@ it('skips summarization when the checkpoint already covers overflow messages', f
         'summarized_up_to_message_id' => $twentiethMessage->id,
     ]);
 
-    $gptMock = mock(GPTService::class);
-    $gptMock->shouldNotReceive('summarizeConversation');
+    $gptMock = mockGptService();
+    $gptMock->shouldNotReceive('summarizeMessages');
 
     $service = new ConversationContextService($gptMock);
-    $service->ensureSummaryCheckpoint($room);
+    $service->runSummarizeCheckpoint($room);
 });
 
-it('incrementally merges new overflow messages into an existing summary', function () {
+it('appends new batch summaries without re-sending the full existing summary to the model', function () {
     $user = User::factory()->create();
     ChatRoom::ensureGlobalThemes();
     $room = ChatRoom::getGlobalTheme('work');
@@ -125,21 +167,45 @@ it('incrementally merges new overflow messages into an existing summary', functi
         ->values()
         ->all();
 
-    $gptMock = mock(GPTService::class);
-    $gptMock->shouldReceive('summarizeConversation')
+    $gptMock = mockGptService();
+    $gptMock->shouldReceive('summarizeMessages')
         ->once()
-        ->with('Existing summary', $newOverflowMessages)
-        ->andReturn('Merged summary');
+        ->with($newOverflowMessages)
+        ->andReturn('New batch summary');
 
     $service = new ConversationContextService($gptMock);
-    $service->ensureSummaryCheckpoint($room);
+    $service->runSummarizeCheckpoint($room);
 
     $checkpoint = ConversationSummary::where('chat_room_id', $room->id)->first();
 
-    expect($checkpoint->content)->toBe('Merged summary')
-        ->and($checkpoint->summarized_up_to_message_id)->toBe(
-            Message::query()->where('chat_room_id', $room->id)->orderBy('id')->skip(24)->first()->id
-        );
+    expect($checkpoint->content)->toBe("Existing summary\nNew batch summary");
+    expect($checkpoint->summarized_up_to_message_id)->toBe(
+        Message::query()->where('chat_room_id', $room->id)->orderBy('id')->skip(24)->first()->id
+    );
+});
+
+it('compresses the stored summary when the merged content exceeds the configured limit', function () {
+    config(['conversation.summary_max_chars' => 20]);
+
+    $user = User::factory()->create();
+    ChatRoom::ensureGlobalThemes();
+    $room = ChatRoom::getGlobalTheme('work');
+
+    seedRoomContextMessages($room, $user, 25);
+
+    $gptMock = mockGptService();
+    $gptMock->shouldReceive('summarizeMessages')
+        ->once()
+        ->andReturn('A very long new batch summary that should trigger compression');
+    $gptMock->shouldReceive('compressSummary')
+        ->once()
+        ->andReturn('Compressed summary');
+
+    $service = new ConversationContextService($gptMock);
+    $service->runSummarizeCheckpoint($room);
+
+    expect(ConversationSummary::where('chat_room_id', $room->id)->first()->content)
+        ->toBe('Compressed summary');
 });
 
 it('does not summarize while another request holds an active summarize lock', function () {
@@ -147,7 +213,7 @@ it('does not summarize while another request holds an active summarize lock', fu
     ChatRoom::ensureGlobalThemes();
     $room = ChatRoom::getGlobalTheme('work');
 
-    seedRoomContextMessages($room, $user, 21);
+    seedRoomContextMessages($room, $user, 25);
 
     ConversationSummary::create([
         'chat_room_id' => $room->id,
@@ -157,11 +223,11 @@ it('does not summarize while another request holds an active summarize lock', fu
         'summarizing_until' => now()->addMinutes(5),
     ]);
 
-    $gptMock = mock(GPTService::class);
-    $gptMock->shouldNotReceive('summarizeConversation');
+    $gptMock = mockGptService();
+    $gptMock->shouldNotReceive('summarizeMessages');
 
     $service = new ConversationContextService($gptMock);
-    $service->ensureSummaryCheckpoint($room);
+    $service->runSummarizeCheckpoint($room);
 
     expect(ConversationSummary::where('chat_room_id', $room->id)->first()->isSummarizeLocked())->toBeTrue();
 });
@@ -171,7 +237,7 @@ it('can acquire the summarize lock after the previous lock has expired', functio
     ChatRoom::ensureGlobalThemes();
     $room = ChatRoom::getGlobalTheme('work');
 
-    seedRoomContextMessages($room, $user, 21);
+    seedRoomContextMessages($room, $user, 25);
 
     ConversationSummary::create([
         'chat_room_id' => $room->id,
@@ -181,18 +247,18 @@ it('can acquire the summarize lock after the previous lock has expired', functio
         'summarizing_until' => now()->subMinute(),
     ]);
 
-    $gptMock = mock(GPTService::class);
-    $gptMock->shouldReceive('summarizeConversation')
+    $gptMock = mockGptService();
+    $gptMock->shouldReceive('summarizeMessages')
         ->once()
         ->andReturn('Recovered summary');
 
     $service = new ConversationContextService($gptMock);
-    $service->ensureSummaryCheckpoint($room);
+    $service->runSummarizeCheckpoint($room);
 
     $checkpoint = ConversationSummary::where('chat_room_id', $room->id)->first();
 
-    expect($checkpoint->content)->toBe('Recovered summary')
-        ->and($checkpoint->isSummarizeLocked())->toBeFalse();
+    expect($checkpoint->content)->toBe('Recovered summary');
+    expect($checkpoint->isSummarizeLocked())->toBeFalse();
 });
 
 it('clears the summarize lock after a successful summarize', function () {
@@ -200,21 +266,21 @@ it('clears the summarize lock after a successful summarize', function () {
     ChatRoom::ensureGlobalThemes();
     $room = ChatRoom::getGlobalTheme('work');
 
-    seedRoomContextMessages($room, $user, 21);
+    seedRoomContextMessages($room, $user, 25);
 
-    $gptMock = mock(GPTService::class);
-    $gptMock->shouldReceive('summarizeConversation')
+    $gptMock = mockGptService();
+    $gptMock->shouldReceive('summarizeMessages')
         ->once()
         ->andReturn('Summary with lock cleared');
 
     $service = new ConversationContextService($gptMock);
-    $service->ensureSummaryCheckpoint($room);
+    $service->runSummarizeCheckpoint($room);
 
     $checkpoint = ConversationSummary::where('chat_room_id', $room->id)->first();
 
-    expect($checkpoint->content)->toBe('Summary with lock cleared')
-        ->and($checkpoint->summarizing_at)->toBeNull()
-        ->and($checkpoint->summarizing_until)->toBeNull();
+    expect($checkpoint->content)->toBe('Summary with lock cleared');
+    expect($checkpoint->summarizing_at)->toBeNull();
+    expect($checkpoint->summarizing_until)->toBeNull();
 });
 
 it('prepends the checkpoint summary before recent messages in context', function () {
@@ -230,13 +296,34 @@ it('prepends the checkpoint summary before recent messages in context', function
         'summarized_up_to_message_id' => 1,
     ]);
 
-    $service = new ConversationContextService(mock(GPTService::class));
+    $service = new ConversationContextService(mockGptService());
     $conversation = $service->buildConversationContext($room);
 
     expect($conversation[0])->toBe([
         'role' => 'user',
         'content' => ConversationContextService::SUMMARY_CONTENT_PREFIX."\nStored summary",
-    ])
-        ->and($conversation[1]['content'])->toBe('Message 1')
-        ->and($conversation[2]['content'])->toBe('Message 2');
+    ]);
+    expect($conversation[1]['content'])->toBe('Message 1');
+    expect($conversation[2]['content'])->toBe('Message 2');
+});
+
+it('truncates long summaries before sending them to the chat model', function () {
+    config(['conversation.summary_context_max_chars' => 10]);
+
+    $user = User::factory()->create();
+    ChatRoom::ensureGlobalThemes();
+    $room = ChatRoom::getGlobalTheme('work');
+
+    ConversationSummary::create([
+        'chat_room_id' => $room->id,
+        'content' => 'This summary is far too long for the demo context window',
+        'summarized_up_to_message_id' => 0,
+    ]);
+
+    $service = new ConversationContextService(mockGptService());
+    $conversation = $service->buildConversationContext($room, 0);
+
+    expect($conversation[0]['content'])->toBe(
+        ConversationContextService::SUMMARY_CONTENT_PREFIX."\nThis summa…"
+    );
 });

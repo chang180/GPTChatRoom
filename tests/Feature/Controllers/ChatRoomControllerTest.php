@@ -15,6 +15,9 @@ use Illuminate\Support\Facades\Session;
 use Inertia\Testing\AssertableInertia as Assert;
 
 use function Pest\Laravel\actingAs;
+use function Pest\Laravel\assertDatabaseHas;
+use function Pest\Laravel\assertDatabaseMissing;
+use function Pest\Laravel\delete;
 use function Pest\Laravel\get;
 use function Pest\Laravel\getJson;
 use function Pest\Laravel\post;
@@ -56,7 +59,7 @@ it('sends a message and receives a response', function () {
     ChatRoom::ensureGlobalThemes();
 
     $mock = \Mockery::mock(GPTService::class);
-    $mock->shouldNotReceive('summarizeConversation');
+    $mock->shouldNotReceive('summarizeMessages');
     $mock->shouldReceive('sendMessage')
         ->once()
         ->withArgs(function ($message, $conversation) {
@@ -75,7 +78,7 @@ it('sends a message and receives a response', function () {
                 ],
             ],
         ]);
-    $this->app->instance(GPTService::class, $mock);
+    app()->instance(GPTService::class, $mock);
 
     // Generate a CSRF token
     Session::start();
@@ -102,14 +105,14 @@ it('sends a message and receives a response', function () {
     ]);
 
     // Assert the message is saved in the database
-    $this->assertDatabaseHas('messages', [
+    assertDatabaseHas('messages', [
         'user_id' => $user->id,
         'text' => 'Hello, GPT!',
         'sender_type' => 'user',
     ]);
 
     // Assert the GPT response is saved in the database
-    $this->assertDatabaseHas('messages', [
+    assertDatabaseHas('messages', [
         'user_id' => $user->id,
         'text' => 'Mocked GPT response',
         'sender_type' => 'gpt',
@@ -174,7 +177,7 @@ it('includes recent room messages as AI context', function () {
     ]);
 
     $mock = \Mockery::mock(GPTService::class);
-    $mock->shouldNotReceive('summarizeConversation');
+    $mock->shouldNotReceive('summarizeMessages');
     $mock->shouldReceive('sendMessage')
         ->once()
         ->withArgs(function ($message, $conversation) {
@@ -194,7 +197,7 @@ it('includes recent room messages as AI context', function () {
                 ],
             ],
         ]);
-    $this->app->instance(GPTService::class, $mock);
+    app()->instance(GPTService::class, $mock);
 
     Session::start();
 
@@ -257,7 +260,7 @@ it('dispatches broadcast events for ai messages and final replies', function () 
                 ],
             ],
         ]);
-    $this->app->instance(GPTService::class, $mock);
+    app()->instance(GPTService::class, $mock);
 
     Session::start();
 
@@ -302,7 +305,7 @@ it('forbids clearing a global theme chat room', function () {
     actingAs($user);
     Session::start();
 
-    $response = $this->delete(route('chat.clear'), [
+    $response = delete(route('chat.clear'), [
         'theme' => 'work',
         '_token' => csrf_token(),
     ]);
@@ -312,7 +315,7 @@ it('forbids clearing a global theme chat room', function () {
             'success' => false,
         ]);
 
-    $this->assertDatabaseHas('messages', [
+    assertDatabaseHas('messages', [
         'chat_room_id' => $workRoom->id,
         'text' => 'Message to clear',
     ]);
@@ -342,7 +345,7 @@ it('dispatches a broadcast event when clearing an owned chat room', function () 
     actingAs($user);
     Session::start();
 
-    $response = $this->delete(route('chat.clear'), [
+    $response = delete(route('chat.clear'), [
         'theme' => 'private-lab',
         '_token' => csrf_token(),
     ]);
@@ -353,7 +356,7 @@ it('dispatches a broadcast event when clearing an owned chat room', function () 
             'deleted_count' => 1,
         ]);
 
-    $this->assertDatabaseMissing('messages', [
+    assertDatabaseMissing('messages', [
         'chat_room_id' => $ownedRoom->id,
         'text' => 'Message to clear',
     ]);
@@ -376,51 +379,48 @@ function seedFeatureRoomMessages(ChatRoom $chatRoom, User $user, int $count): vo
     }
 }
 
-it('creates a summary checkpoint when sending ai message beyond twenty context messages', function () {
+it('creates a summary checkpoint after response when enough overflow exists for ai messages', function () {
     /** @var Authenticatable $user */
     $user = User::factory()->create();
     ChatRoom::ensureGlobalThemes();
     $workRoom = ChatRoom::getGlobalTheme('work');
 
     actingAs($user);
-    seedFeatureRoomMessages($workRoom, $user, 20);
+    seedFeatureRoomMessages($workRoom, $user, 24);
 
     $mock = \Mockery::mock(GPTService::class);
-    $mock->shouldReceive('summarizeConversation')
+    $mock->shouldReceive('summarizeMessages')
         ->once()
-        ->with(null, [['role' => 'user', 'content' => 'History 1']])
         ->andReturn('Compressed history');
     $mock->shouldReceive('sendMessage')
         ->once()
         ->withArgs(function ($message, $conversation) {
-            return $message === 'Message 21'
-                && $conversation[0]['role'] === 'user'
-                && str_contains($conversation[0]['content'], ConversationContextService::SUMMARY_CONTENT_PREFIX)
-                && str_contains($conversation[0]['content'], 'Compressed history')
-                && count($conversation) === 21;
+            return $message === 'Message 25'
+                && count($conversation) === 20
+                && ! str_contains($conversation[0]['content'] ?? '', ConversationContextService::SUMMARY_CONTENT_PREFIX);
         })
         ->andReturn([
             'choices' => [
                 [
                     'message' => [
-                        'content' => 'Reply with summary context',
+                        'content' => 'Reply without waiting for summarize',
                     ],
                 ],
             ],
         ]);
-    $this->app->instance(GPTService::class, $mock);
+    app()->instance(GPTService::class, $mock);
 
     Session::start();
 
     $response = post(route('chat.send-message'), [
-        'message' => 'Message 21',
+        'message' => 'Message 25',
         'theme' => 'work',
         '_token' => csrf_token(),
     ]);
 
     $response->assertStatus(200);
 
-    $this->assertDatabaseHas('conversation_summaries', [
+    assertDatabaseHas('conversation_summaries', [
         'chat_room_id' => $workRoom->id,
         'content' => 'Compressed history',
     ]);
@@ -456,14 +456,14 @@ it('deletes conversation summary checkpoints when clearing an owned chat room', 
     actingAs($user);
     Session::start();
 
-    $response = $this->delete(route('chat.clear'), [
+    $response = delete(route('chat.clear'), [
         'theme' => 'summary-clear-room',
         '_token' => csrf_token(),
     ]);
 
     $response->assertStatus(200);
 
-    $this->assertDatabaseMissing('conversation_summaries', [
+    assertDatabaseMissing('conversation_summaries', [
         'chat_room_id' => $ownedRoom->id,
     ]);
 });

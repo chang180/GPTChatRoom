@@ -76,7 +76,8 @@ docs/
 
 負責 AI 對話上下文：
 
-- `ensureSummaryCheckpoint()`: 當同房 `user`/`gpt` 訊息超過 20 則且視窗外仍有未小結訊息時，先以 `conversation_summaries.summarizing_at` / `summarizing_until` 原子搶占小結鎖，再呼叫 `GPTService::summarizeConversation()` 並 upsert；搶不到鎖的請求會短暫等待後沿用既有切點，避免重複 summarize
+- `ensureSummaryCheckpoint()`: 當 overflow 訊息數達門檻時，以 `SummarizeConversationJob`（`afterResponse`）非同步小結，不阻塞 AI 回覆
+- `runSummarizeCheckpoint()`: 搶 `summarizing_at` 鎖後呼叫 `GPTService::summarizeMessages()`，拼接／壓縮後 upsert
 - `buildConversationContext()`: 組出「小結切點（若有）+ 最近 20 則原文」送給 GPT
 
 小結僅供後端 API 使用，不會出現在聊天 UI。

@@ -1,5 +1,6 @@
 <?php
 
+use App\Services\GPTService;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Tests\TestCase;
 
@@ -45,7 +46,13 @@ expect()->extend('toBeOne', function () {
 |
 */
 
-function something()
+/**
+ * @return GPTService&\Mockery\MockInterface
+ */
+function mockGptService(): \App\Services\GPTService
 {
-    // ..
+    /** @var \App\Services\GPTService&\Mockery\MockInterface $mock */
+    $mock = mock(\App\Services\GPTService::class);
+
+    return $mock;
 }

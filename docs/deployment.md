@@ -133,8 +133,9 @@ Migration（依序執行；`php artisan migrate` 會自動套用尚未執行的�
 
 ### 行為與營運注意
 
-- 同房可計入上下文的訊息 **> 20 則** 且視窗外仍有未小結訊息時，該次 AI 請求會**先** summarize，再串流回覆，該次回應可能較慢。
-- 並發 AI 請求：僅一個請求會執行 summarize；其餘請求短暫等待後沿用既有切點，避免重複計費。
+- 同房可計入上下文的訊息 **> 20 則** 且視窗外未小結訊息 **≥ 5 則**（`CONVERSATION_SUMMARIZE_MIN_OVERFLOW`）時，會在 HTTP 回應送出後以 `dispatchAfterResponse` 非同步 summarize，**不阻塞**串流／AI 回覆。
+- 小結僅處理新 overflow 批次，舊小結以文字拼接保存；超過 `CONVERSATION_SUMMARY_MAX_CHARS` 時會再壓縮一輪。送進聊天 API 的小結會截斷至 `CONVERSATION_SUMMARY_CONTEXT_MAX_CHARS`。
+- 並發 AI 請求：僅一個 background job 會搶到 summarize 鎖；其餘略過，避免重複計費。
 - 清除**可清空權限內**的聊天室時，會一併刪除該房 `conversation_summaries`（全域主題房目前不可清空）。
 - 若 summarize 失敗，會依現有流程寫入 `sender_type=error` 訊息。
 

@@ -2,11 +2,13 @@
 
 namespace App\Services;
 
+use App\Jobs\SummarizeConversationJob;
 use App\Models\ChatRoom;
 use App\Models\ConversationSummary;
 use App\Models\Message;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class ConversationContextService
 {
@@ -16,10 +18,6 @@ class ConversationContextService
 
     public const SUMMARIZE_LOCK_TTL_SECONDS = 120;
 
-    public const SUMMARIZE_LOCK_WAIT_ATTEMPTS = 5;
-
-    public const SUMMARIZE_LOCK_WAIT_MS = 100;
-
     public function __construct(protected GPTService $gptService) {}
 
     public function ensureSummaryCheckpoint(ChatRoom $chatRoom): void
@@ -28,9 +26,24 @@ class ConversationContextService
             return;
         }
 
-        if (! $this->tryAcquireSummarizeLock($chatRoom)) {
-            $this->waitForSummarizeLockRelease($chatRoom);
+        $summary = ConversationSummary::query()
+            ->where('chat_room_id', $chatRoom->id)
+            ->first();
 
+        if ($summary?->isSummarizeLocked()) {
+            return;
+        }
+
+        SummarizeConversationJob::dispatch($chatRoom->id)->afterResponse();
+    }
+
+    public function runSummarizeCheckpoint(ChatRoom $chatRoom): void
+    {
+        if ($this->resolveUnsummarizedOverflow($chatRoom) === null) {
+            return;
+        }
+
+        if (! $this->tryAcquireSummarizeLock($chatRoom)) {
             return;
         }
 
@@ -41,10 +54,8 @@ class ConversationContextService
                 return;
             }
 
-            $summaryContent = $this->gptService->summarizeConversation(
-                $overflow['existing_summary'],
-                $overflow['messages'],
-            );
+            $batchSummary = $this->gptService->summarizeMessages($overflow['messages']);
+            $summaryContent = $this->mergeSummaryContent($overflow['existing_summary'], $batchSummary);
 
             ConversationSummary::query()->updateOrCreate(
                 ['chat_room_id' => $chatRoom->id],
@@ -60,8 +71,10 @@ class ConversationContextService
         }
     }
 
-    public function buildConversationContext(ChatRoom $chatRoom, int $limit = self::CONTEXT_LIMIT): array
+    public function buildConversationContext(ChatRoom $chatRoom, ?int $limit = null): array
     {
+        $limit ??= $this->contextLimit();
+
         $conversation = $this->mapMessagesToConversation(
             (clone $this->contextMessagesQuery($chatRoom))
                 ->latest('id')
@@ -82,7 +95,7 @@ class ConversationContextService
         return array_merge([
             [
                 'role' => 'user',
-                'content' => self::SUMMARY_CONTENT_PREFIX."\n".$checkpoint->content,
+                'content' => self::SUMMARY_CONTENT_PREFIX."\n".$this->trimSummaryForContext($checkpoint->content),
             ],
         ], $conversation);
     }
@@ -93,14 +106,15 @@ class ConversationContextService
     protected function resolveUnsummarizedOverflow(ChatRoom $chatRoom): ?array
     {
         $contextQuery = $this->contextMessagesQuery($chatRoom);
+        $contextLimit = $this->contextLimit();
 
-        if ($contextQuery->count() <= self::CONTEXT_LIMIT) {
+        if ($contextQuery->count() <= $contextLimit) {
             return null;
         }
 
         $recentMessages = (clone $contextQuery)
             ->latest('id')
-            ->limit(self::CONTEXT_LIMIT)
+            ->limit($contextLimit)
             ->get();
 
         $windowStartId = $recentMessages->min('id');
@@ -121,7 +135,7 @@ class ConversationContextService
             ->orderBy('id')
             ->get();
 
-        if ($unsummarizedMessages->isEmpty()) {
+        if ($unsummarizedMessages->count() < $this->summarizeMinOverflow()) {
             return null;
         }
 
@@ -130,6 +144,44 @@ class ConversationContextService
             'messages' => $this->mapMessagesToConversation($unsummarizedMessages),
             'last_message_id' => $unsummarizedMessages->last()->id,
         ];
+    }
+
+    protected function mergeSummaryContent(?string $existingSummary, string $batchSummary): string
+    {
+        $batchSummary = trim($batchSummary);
+
+        if ($batchSummary === '') {
+            return trim($existingSummary ?? '');
+        }
+
+        $merged = $existingSummary !== null && $existingSummary !== ''
+            ? trim($existingSummary)."\n".$batchSummary
+            : $batchSummary;
+
+        if (mb_strlen($merged) <= config('conversation.summary_max_chars')) {
+            return $merged;
+        }
+
+        return $this->gptService->compressSummary($merged);
+    }
+
+    protected function trimSummaryForContext(string $summary): string
+    {
+        return Str::limit(
+            $summary,
+            config('conversation.summary_context_max_chars'),
+            '…',
+        );
+    }
+
+    protected function contextLimit(): int
+    {
+        return config('conversation.context_limit', self::CONTEXT_LIMIT);
+    }
+
+    protected function summarizeMinOverflow(): int
+    {
+        return config('conversation.summarize_min_overflow', 5);
     }
 
     protected function tryAcquireSummarizeLock(ChatRoom $chatRoom): bool
@@ -165,21 +217,6 @@ class ConversationContextService
 
             return true;
         });
-    }
-
-    protected function waitForSummarizeLockRelease(ChatRoom $chatRoom): void
-    {
-        for ($attempt = 0; $attempt < self::SUMMARIZE_LOCK_WAIT_ATTEMPTS; $attempt++) {
-            usleep(self::SUMMARIZE_LOCK_WAIT_MS * 1000);
-
-            $summary = ConversationSummary::query()
-                ->where('chat_room_id', $chatRoom->id)
-                ->first();
-
-            if ($summary === null || ! $summary->isSummarizeLocked()) {
-                return;
-            }
-        }
     }
 
     protected function releaseSummarizeLock(ChatRoom $chatRoom): void
