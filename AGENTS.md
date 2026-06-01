@@ -28,7 +28,7 @@ Upgraded **2026-06-01** (private-room Phase 1). Details and rules: `laravel-boos
 - **inertiajs/inertia-laravel 3** + **@inertiajs/vue3 3.x**
 - **Jetstream 5**, **Fortify**, **Sanctum 4**
 - **Pest 4**, **openai-php/laravel 0.19**
-- **Ably** broadcasting, **Vite 6**, **Vue 3**, **Tailwind 3**
+- **Ably** broadcasting, **Vite 7**, **@inertiajs/vite 3**, **Vue 3**, **Tailwind 3**
 
 ## Private-room phased development
 

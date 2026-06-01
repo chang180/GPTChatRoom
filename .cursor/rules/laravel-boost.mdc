@@ -33,7 +33,8 @@ This application is a Laravel application and its main Laravel ecosystems packag
 - phpunit/phpunit (PHPUNIT) - v12 (via Pest 4)
 - tailwindcss (TAILWINDCSS) - v3
 - vue (VUE) - v3
-- vite (VITE) - v6
+- vite (VITE) - v7
+- @inertiajs/vite (INERTIA vite) - v3
 
 
 ## Conventions
@@ -174,7 +175,7 @@ Route::get('/users', function () {
 - **Server:** `inertiajs/inertia-laravel` v3 — use Inertia v3 / Laravel adapter docs via `search-docs`.
 - **Client:** `@inertiajs/vue3` v3 — Vue 3 pages in `resources/js/Pages`; navigation via `@inertiajs/vue3` (`router`, `Link`, `useForm`). Initial page data comes from `<script data-page>` via `getInitialPageFromDOM` (no `#app` dataset workaround).
 - Do not reference inertia-laravel v2-only install or config patterns; verify against v3 docs before changing middleware, shared data, or SSR setup.
-- `@inertiajs/vite` v3 requires Vite 7+; this project stays on Vite 6 and uses `laravel-vite-plugin` + `resolvePageComponent` in `resources/js/app.js`.
+- **`@inertiajs/vite` v3** with **Vite 7** and **`laravel-vite-plugin` v2** — `inertia({ ssr: false })` in `vite.config.js`; `pages: './Pages'` in `resources/js/app.js`.
 
 ### Inertia server features (polling, deferred props, etc.; confirm in v3 docs)
 - Polling
