@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Actions\AcceptChatRoomInvitation;
+use App\Events\PrivateChatRoomClosed;
 use App\Http\Requests\StorePrivateChatRoomRequest;
 use App\Models\ChatRoom;
 use App\Models\ChatRoomInvitation;
@@ -103,6 +104,8 @@ class PrivateChatRoomController extends Controller
         $this->authorize('delete', $chatRoom);
 
         $chatRoomId = $chatRoom->id;
+
+        broadcast(new PrivateChatRoomClosed($chatRoomId));
 
         DB::transaction(function () use ($chatRoom): void {
             Message::query()->where('chat_room_id', $chatRoom->id)->delete();

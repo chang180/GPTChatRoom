@@ -1,6 +1,7 @@
 <?php
 
 use App\Events\ChatMessageCreated;
+use App\Events\PrivateChatRoomClosed;
 use App\Models\ChatRoom;
 use App\Models\ChatRoomMember;
 use App\Models\Message;
@@ -11,6 +12,7 @@ use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\Event;
 use Inertia\Testing\AssertableInertia as Assert;
 
 use function Pest\Laravel\actingAs;
@@ -83,6 +85,29 @@ it('creates a private room without a description field in the request', function
     expect($room)->not->toBeNull()
         ->and($room->name)->toBe('僅名稱')
         ->and($room->description)->toBeNull();
+});
+
+it('broadcasts private room closed on a PrivateChannel', function () {
+    $room = privateRoomWithOwner(User::factory()->create());
+
+    $event = new PrivateChatRoomClosed($room->id);
+
+    expect($event->broadcastOn()[0])->toBeInstanceOf(PrivateChannel::class)
+        ->and($event->broadcastAs())->toBe('chat.room.closed')
+        ->and($event->broadcastWith())->toBe(['chat_room_id' => $room->id]);
+});
+
+it('dispatches private room closed before deleting the room', function () {
+    Event::fake([PrivateChatRoomClosed::class]);
+
+    $owner = User::factory()->create();
+    $room = privateRoomWithOwner($owner);
+
+    actingAs($owner)->delete(route('chat.private.destroy', $room));
+
+    Event::assertDispatched(PrivateChatRoomClosed::class, function (PrivateChatRoomClosed $event) use ($room): bool {
+        return $event->chatRoomId === $room->id;
+    });
 });
 
 it('lets the owner close a private room', function () {

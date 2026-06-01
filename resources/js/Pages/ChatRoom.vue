@@ -3,6 +3,7 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 import ChatSidebar from '@/Components/ChatSidebar.vue';
 import { ref, onMounted, onUnmounted, computed, nextTick, watch, reactive } from 'vue';
 import axios from 'axios';
+import { router } from '@inertiajs/vue3';
 import { route } from 'ziggy-js';
 import { marked } from 'marked';
 
@@ -29,6 +30,8 @@ const loadingMore = ref(false);
 const error = ref(null);
 const abortController = ref(null);
 const activeBroadcastChannel = ref(null);
+const showRoomClosedModal = ref(false);
+const privateRoomClosedHandled = ref(false);
 
 // 主題聊天室相關
 const currentChatRoom = ref(props.currentChatRoom);
@@ -121,6 +124,35 @@ const replaceMessage = (targetId, nextMessage) => {
     triggerUpdate();
 };
 
+const handlePrivateRoomClosed = () => {
+    if (privateRoomClosedHandled.value || !isPrivateRoom.value) {
+        return;
+    }
+
+    privateRoomClosedHandled.value = true;
+    showRoomClosedModal.value = true;
+    loading.value = false;
+    loadingMore.value = false;
+
+    unsubscribeFromChatRoom(currentChatRoom.value?.id);
+
+    if (abortController.value) {
+        abortController.value.abort('Chat room closed');
+        abortController.value = null;
+    }
+};
+
+const leaveClosedPrivateRoom = () => {
+    showRoomClosedModal.value = false;
+    router.visit(route('chat.private.index'), { preserveState: false, replace: true });
+};
+
+const isPrivateRoomUnavailable = (error) => {
+    const status = error?.response?.status;
+
+    return isPrivateRoom.value && (status === 404 || status === 403);
+};
+
 const subscribeToChatRoom = (chatRoom) => {
     if (!chatRoom?.id || !getEcho()) {
         return;
@@ -133,6 +165,14 @@ const subscribeToChatRoom = (chatRoom) => {
     const channel = isPrivateRoom.value
         ? getEcho().private(channelName)
         : getEcho().channel(channelName);
+
+    if (isPrivateRoom.value) {
+        channel.listen('.chat.room.closed', ({ chat_room_id: chatRoomId }) => {
+            if (chatRoomId === currentChatRoom.value?.id) {
+                handlePrivateRoomClosed();
+            }
+        });
+    }
 
     channel
         .listen('.chat.message.created', ({ message }) => {
@@ -200,7 +240,11 @@ const loadMoreMessages = async () => {
         Object.assign(pagination, response.data.pagination);
         
     } catch (error) {
-        console.error('Failed to load more messages:', error);
+        if (isPrivateRoomUnavailable(error)) {
+            handlePrivateRoomClosed();
+        } else {
+            console.error('Failed to load more messages:', error);
+        }
     } finally {
         loadingMore.value = false;
     }
@@ -276,8 +320,11 @@ const sendMessage = async () => {
                     ...response.data.message,
                 });
             } catch (error) {
-                console.error('Failed to save direct message:', error);
-                // 如果保存失敗，可以選擇移除前端顯示的訊息或顯示錯誤
+                if (isPrivateRoomUnavailable(error)) {
+                    handlePrivateRoomClosed();
+                } else {
+                    console.error('Failed to save direct message:', error);
+                }
             }
             return;
         }
@@ -393,7 +440,11 @@ const sendMessage = async () => {
 
             // 只有在不是取消錯誤時才顯示錯誤訊息
             if (!axios.isCancel(error)) {
-                handleError(error);
+                if (isPrivateRoomUnavailable(error)) {
+                    handlePrivateRoomClosed();
+                } else {
+                    handleError(error);
+                }
             }
         }
     }
@@ -401,6 +452,12 @@ const sendMessage = async () => {
 
 // 處理錯誤的函數
 const handleError = (error) => {
+    if (isPrivateRoomUnavailable(error)) {
+        handlePrivateRoomClosed();
+
+        return;
+    }
+
     let errorMessage = '發送訊息失敗，請稍後再試。';
 
     if (error.response) {
@@ -579,6 +636,8 @@ watch(() => props.currentChatRoom?.id, (newRoomId, oldRoomId) => {
     }
 
     if (newRoomId && newRoomId !== oldRoomId) {
+        privateRoomClosedHandled.value = false;
+        showRoomClosedModal.value = false;
         // 確保以最新房型訂閱（private vs public channel）
         roomMode.value = props.roomMode || 'theme';
         currentChatRoom.value = props.currentChatRoom;
@@ -800,6 +859,29 @@ watch(() => props.currentChatRoom?.id, (newRoomId, oldRoomId) => {
         <!-- 載入遮罩 (只在初始加載時顯示) -->
         <div v-if="loading && messages.filter(m => m.sender_type === 'gpt' && m.isStreaming).length === 0" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-800 bg-opacity-50">
             <div class="loader"></div>
+        </div>
+
+        <!-- 私人房已被房主關閉 -->
+        <div
+            v-if="showRoomClosedModal"
+            class="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4"
+        >
+            <div class="w-full max-w-md bg-white dark:bg-gray-800 rounded-xl shadow-xl p-6 text-center">
+                <i class="fas fa-door-closed text-4xl text-red-500 mb-4"></i>
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                    聊天室已關閉
+                </h3>
+                <p class="text-sm text-gray-600 dark:text-gray-300 mb-6">
+                    房主已關閉此私人聊天室，請返回列表選擇其他房間。
+                </p>
+                <button
+                    type="button"
+                    @click="leaveClosedPrivateRoom"
+                    class="px-4 py-2 text-sm rounded-lg bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                    返回私人房列表
+                </button>
+            </div>
         </div>
     </AppLayout>
 </template>
