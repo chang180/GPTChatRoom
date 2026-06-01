@@ -9,6 +9,7 @@ Laravel 12 + Inertia.js + Vue 3 的聊天學習專案，目標是整理出一個
 - 已完成訊息持久化、歷史載入、聊天室清除
 - 已完成 OpenAI 串流回應
 - 已完成房間內最近訊息的 AI 上下文帶入
+- 已完成超過 20 則時的增量對話小結切點（後端上下文壓縮，含 DB 鎖防競爭，不顯示於 UI）
 - 已完成 Ably WebSocket Phase 1
 - 目前 AI 串流使用 `SSE`，房間級即時同步使用 Ably
 
@@ -28,6 +29,10 @@ Laravel 12 + Inertia.js + Vue 3 的聊天學習專案，目標是整理出一個
 - Markdown 訊息顯示
 - 認證、Email 驗證、2FA
 - 訊息分頁與快取
+
+## 生產環境佈署
+
+以 `git pull` 更新後，**務必**執行 `php artisan migrate --force`，並確認 `OPENAI_API_KEY` 有效。細節與 agent 檢查清單見 [`docs/deployment.md`](docs/deployment.md)。
 
 ## 專案文件
 
@@ -75,6 +80,7 @@ php artisan test
 - 路由集中在 `routes/web.php`
 - 聊天流程由 `app/Http/Controllers/ChatRoomController.php` 主導
 - OpenAI 呼叫封裝在 `app/Services/GPTService.php`
+- AI 上下文與小結切點在 `app/Services/ConversationContextService.php`
 - 訊息分頁與快取邏輯在 `app/Services/MessageCacheService.php`
 - 前端聊天頁在 `resources/js/Pages/ChatRoom.vue`
 

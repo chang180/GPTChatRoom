@@ -5,6 +5,7 @@
 ## 文件入口
 
 - 專案開發文件：[`../docs/README.md`](../docs/README.md)
+- **生產佈署提醒**：[`../docs/deployment.md`](../docs/deployment.md)（pull 後必跑 migration）
 - 架構說明：[`../docs/architecture.md`](../docs/architecture.md)
 - 即時通訊規劃：[`../docs/realtime-websocket-plan.md`](../docs/realtime-websocket-plan.md)
 
@@ -30,6 +31,7 @@
 - AI 問答模式
 - GPT SSE 串流回覆
 - 同房最近訊息會帶入 AI 上下文
+- 超過 20 則時增量對話小結切點（`ConversationContextService` + `conversation_summaries`）
 - 清除整個聊天室訊息
 - Ably WebSocket Phase 1
 - 多瀏覽器房間同步
@@ -54,9 +56,9 @@
 
 `ChatRoom` model 目前實際使用的是 4 個全域主題聊天室。雖然 model 裡仍保留 `getDefaultForUser()`，但主流程優先走全域主題房。
 
-### 3. OpenAI 模型目前寫死，但已帶最近聊天室上下文
+### 3. OpenAI 模型目前寫死，上下文含小結切點
 
-`app/Services/GPTService.php` 目前直接使用 `gpt-5-nano`，且 controller 會把同房最近訊息整理成 conversation messages 一起送出。
+`app/Services/GPTService.php` 使用 `gpt-5-nano`。`ConversationContextService` 在訊息超過 20 則時會先 summarize 並寫入 `conversation_summaries`，再組「小結 + 最近 20 則」送 API。佈署時見 [`../docs/deployment.md`](../docs/deployment.md)。
 
 ### 4. 即時同步目前使用 public channel
 

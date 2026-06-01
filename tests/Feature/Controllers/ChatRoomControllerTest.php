@@ -4,8 +4,10 @@ use App\Events\AiReplyCompleted;
 use App\Events\ChatMessageCreated;
 use App\Events\ChatRoomCleared;
 use App\Models\ChatRoom;
+use App\Models\ConversationSummary;
 use App\Models\Message;
 use App\Models\User;
+use App\Services\ConversationContextService;
 use App\Services\GPTService;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Support\Facades\Event;
@@ -54,6 +56,7 @@ it('sends a message and receives a response', function () {
     ChatRoom::ensureGlobalThemes();
 
     $mock = \Mockery::mock(GPTService::class);
+    $mock->shouldNotReceive('summarizeConversation');
     $mock->shouldReceive('sendMessage')
         ->once()
         ->withArgs(function ($message, $conversation) {
@@ -171,6 +174,7 @@ it('includes recent room messages as AI context', function () {
     ]);
 
     $mock = \Mockery::mock(GPTService::class);
+    $mock->shouldNotReceive('summarizeConversation');
     $mock->shouldReceive('sendMessage')
         ->once()
         ->withArgs(function ($message, $conversation) {
@@ -358,4 +362,108 @@ it('dispatches a broadcast event when clearing an owned chat room', function () 
         return $event->chatRoomId === $ownedRoom->id
             && $event->deletedCount === 1;
     });
+});
+
+function seedFeatureRoomMessages(ChatRoom $chatRoom, User $user, int $count): void
+{
+    for ($i = 1; $i <= $count; $i++) {
+        Message::create([
+            'user_id' => $user->id,
+            'chat_room_id' => $chatRoom->id,
+            'text' => "History {$i}",
+            'sender_type' => $i % 2 === 1 ? 'user' : 'gpt',
+        ]);
+    }
+}
+
+it('creates a summary checkpoint when sending ai message beyond twenty context messages', function () {
+    /** @var Authenticatable $user */
+    $user = User::factory()->create();
+    ChatRoom::ensureGlobalThemes();
+    $workRoom = ChatRoom::getGlobalTheme('work');
+
+    actingAs($user);
+    seedFeatureRoomMessages($workRoom, $user, 20);
+
+    $mock = \Mockery::mock(GPTService::class);
+    $mock->shouldReceive('summarizeConversation')
+        ->once()
+        ->with(null, [['role' => 'user', 'content' => 'History 1']])
+        ->andReturn('Compressed history');
+    $mock->shouldReceive('sendMessage')
+        ->once()
+        ->withArgs(function ($message, $conversation) {
+            return $message === 'Message 21'
+                && $conversation[0]['role'] === 'user'
+                && str_contains($conversation[0]['content'], ConversationContextService::SUMMARY_CONTENT_PREFIX)
+                && str_contains($conversation[0]['content'], 'Compressed history')
+                && count($conversation) === 21;
+        })
+        ->andReturn([
+            'choices' => [
+                [
+                    'message' => [
+                        'content' => 'Reply with summary context',
+                    ],
+                ],
+            ],
+        ]);
+    $this->app->instance(GPTService::class, $mock);
+
+    Session::start();
+
+    $response = post(route('chat.send-message'), [
+        'message' => 'Message 21',
+        'theme' => 'work',
+        '_token' => csrf_token(),
+    ]);
+
+    $response->assertStatus(200);
+
+    $this->assertDatabaseHas('conversation_summaries', [
+        'chat_room_id' => $workRoom->id,
+        'content' => 'Compressed history',
+    ]);
+});
+
+it('deletes conversation summary checkpoints when clearing an owned chat room', function () {
+    /** @var Authenticatable $user */
+    $user = User::factory()->create();
+
+    $ownedRoom = ChatRoom::create([
+        'user_id' => $user->id,
+        'slug' => 'summary-clear-room',
+        'name' => 'Summary Clear Room',
+        'description' => 'Owned room',
+        'is_active' => true,
+    ]);
+
+    Message::create([
+        'user_id' => $user->id,
+        'chat_room_id' => $ownedRoom->id,
+        'text' => 'Message to clear',
+        'sender_type' => 'user',
+    ]);
+
+    ConversationSummary::create([
+        'chat_room_id' => $ownedRoom->id,
+        'content' => 'Checkpoint summary',
+        'summarized_up_to_message_id' => 1,
+    ]);
+
+    Event::fake([ChatRoomCleared::class]);
+
+    actingAs($user);
+    Session::start();
+
+    $response = $this->delete(route('chat.clear'), [
+        'theme' => 'summary-clear-room',
+        '_token' => csrf_token(),
+    ]);
+
+    $response->assertStatus(200);
+
+    $this->assertDatabaseMissing('conversation_summaries', [
+        'chat_room_id' => $ownedRoom->id,
+    ]);
 });

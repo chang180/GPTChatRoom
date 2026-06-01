@@ -6,8 +6,10 @@ use App\Events\AiReplyCompleted;
 use App\Events\ChatMessageCreated;
 use App\Events\ChatRoomCleared;
 use App\Models\ChatRoom;
+use App\Models\ConversationSummary;
 use App\Models\Message;
 use App\Models\User;
+use App\Services\ConversationContextService;
 use App\Services\GPTService;
 use App\Services\MessageCacheService;
 use Illuminate\Http\Request;
@@ -21,10 +23,16 @@ class ChatRoomController extends Controller
 
     protected $messageCacheService;
 
-    public function __construct(GPTService $gptService, MessageCacheService $messageCacheService)
-    {
+    protected $conversationContextService;
+
+    public function __construct(
+        GPTService $gptService,
+        MessageCacheService $messageCacheService,
+        ConversationContextService $conversationContextService,
+    ) {
         $this->gptService = $gptService;
         $this->messageCacheService = $messageCacheService;
+        $this->conversationContextService = $conversationContextService;
     }
 
     public function index(Request $request)
@@ -117,7 +125,8 @@ class ChatRoomController extends Controller
 
         // 如果是 AI 發問模式，發送給 GPT
         try {
-            $conversation = $this->buildConversationContext($chatRoom);
+            $this->conversationContextService->ensureSummaryCheckpoint($chatRoom);
+            $conversation = $this->conversationContextService->buildConversationContext($chatRoom);
             $gptResponse = $this->gptService->sendMessage($data['message'], $conversation);
             $gptMessageContent = $gptResponse['choices'][0]['message']['content'];
             $gptMessage = Message::create([
@@ -189,7 +198,8 @@ class ChatRoomController extends Controller
         $this->messageCacheService->invalidateCacheOnNewMessage($chatRoom->id);
 
         try {
-            $conversation = $this->buildConversationContext($chatRoom);
+            $this->conversationContextService->ensureSummaryCheckpoint($chatRoom);
+            $conversation = $this->conversationContextService->buildConversationContext($chatRoom);
             $stream = $this->gptService->sendMessageStream($data['message'], $conversation);
 
             broadcast(new ChatMessageCreated($message, 'ai_query'))->toOthers();
@@ -279,8 +289,9 @@ class ChatRoomController extends Controller
         }
 
         try {
-            // 刪除該聊天室的所有訊息
+            // 刪除該聊天室的所有訊息與對話小結切點
             $deletedCount = Message::where('chat_room_id', $chatRoom->id)->delete();
+            ConversationSummary::where('chat_room_id', $chatRoom->id)->delete();
 
             // 清除快取
             $this->messageCacheService->invalidateCacheOnNewMessage($chatRoom->id);
@@ -315,25 +326,6 @@ class ChatRoomController extends Controller
             ->first()
             ?? ChatRoom::getGlobalTheme('work')
             ?? ChatRoom::getDefaultForUser($user);
-    }
-
-    protected function buildConversationContext(ChatRoom $chatRoom, int $limit = 20): array
-    {
-        return Message::query()
-            ->where('chat_room_id', $chatRoom->id)
-            ->whereIn('sender_type', ['user', 'gpt'])
-            ->latest('id')
-            ->limit($limit)
-            ->get()
-            ->reverse()
-            ->map(function (Message $message) {
-                return [
-                    'role' => $message->sender_type === 'gpt' ? 'assistant' : 'user',
-                    'content' => $message->text,
-                ];
-            })
-            ->values()
-            ->all();
     }
 
     protected function canClearChatRoom(User $user, ChatRoom $chatRoom): bool

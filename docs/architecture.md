@@ -52,8 +52,8 @@ docs/
 
 - `index()`: 載入聊天室頁面與首批訊息
 - `loadMoreMessages()`: 載入更多歷史訊息
-- `sendMessage()`: 儲存使用者訊息，必要時再同步呼叫 GPT
-- `sendMessageStream()`: 儲存使用者訊息後，以 SSE 串流 GPT 回覆
+- `sendMessage()`: 儲存使用者訊息，必要時先確保對話小結切點，再同步呼叫 GPT
+- `sendMessageStream()`: 儲存使用者訊息後，先確保對話小結切點，再以 SSE 串流 GPT 回覆
 - `clearChatRoom()`: 清除指定主題聊天室的全部訊息
 
 ### `app/Services/GPTService.php`
@@ -64,6 +64,15 @@ docs/
 - `sendMessageStream()`: 串流回應
 
 目前模型寫死為 `gpt-5-nano`，且 controller 會傳入當前聊天室最近一段訊息作為上下文。
+
+### `app/Services/ConversationContextService.php`
+
+負責 AI 對話上下文：
+
+- `ensureSummaryCheckpoint()`: 當同房 `user`/`gpt` 訊息超過 20 則且視窗外仍有未小結訊息時，先以 `conversation_summaries.summarizing_at` / `summarizing_until` 原子搶占小結鎖，再呼叫 `GPTService::summarizeConversation()` 並 upsert；搶不到鎖的請求會短暫等待後沿用既有切點，避免重複 summarize
+- `buildConversationContext()`: 組出「小結切點（若有）+ 最近 20 則原文」送給 GPT
+
+小結僅供後端 API 使用，不會出現在聊天 UI。
 
 ### `app/Services/MessageCacheService.php`
 
@@ -138,6 +147,19 @@ docs/
 - `study`
 - `creative`
 - `daily`
+
+### `conversation_summaries`
+
+用途：
+
+- 每個聊天室最多一筆對話小結切點，供 AI 上下文壓縮
+
+關鍵欄位：
+
+- `chat_room_id`（unique）
+- `content`
+- `summarized_up_to_message_id`
+- `summarizing_at` / `summarizing_until`（小結進行中鎖，含逾時自動釋放）
 
 ### `messages`
 

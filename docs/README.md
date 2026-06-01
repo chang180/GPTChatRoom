@@ -5,6 +5,7 @@
 ## 文件索引
 
 - [`architecture.md`](architecture.md): 專案結構、資料流、核心檔案、資料模型
+- [`deployment.md`](deployment.md): **生產環境 pull 佈署必讀**（migration、OpenAI、小結切點）
 - [`realtime-websocket-plan.md`](realtime-websocket-plan.md): 現況分析、外部服務選型、WebSocket 導入計畫
 - [`phase-2-checklist.md`](phase-2-checklist.md): Ably Phase 1 之後的下一階段工作清單
 
@@ -24,6 +25,7 @@
 - 直接訊息與 AI 問答兩種模式
 - GPT 串流回覆
 - 最近聊天室訊息的 AI 上下文
+- 超過 20 則時的增量對話小結切點（含 DB 鎖）
 - 聊天室清除
 - Ably broadcasting / Echo Phase 1
 - 多瀏覽器即時同步驗證

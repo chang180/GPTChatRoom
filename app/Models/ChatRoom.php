@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class ChatRoom extends Model
 {
@@ -49,13 +50,18 @@ class ChatRoom extends Model
         return $this->hasMany(Message::class);
     }
 
+    public function conversationSummary(): HasOne
+    {
+        return $this->hasOne(ConversationSummary::class);
+    }
+
     /**
      * Get the default chat room for a user
      */
     public static function getDefaultForUser(User $user): self
     {
         return static::firstOrCreate(
-            ['user_id' => $user->id, 'slug' => 'default-' . $user->id],
+            ['user_id' => $user->id, 'slug' => 'default-'.$user->id],
             [
                 'name' => '預設聊天室',
                 'description' => '預設聊天室',
