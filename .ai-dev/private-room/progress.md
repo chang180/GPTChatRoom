@@ -263,6 +263,8 @@ Tests: 7 skipped, 77 passed (227 assertions)  — 既有 ChatRoom/主題房測�
 - 2026-06-01：Phase 2 Review PASS；Google 佈署 E2E 改由人類上線後驗證（見 deployment.md）
 - 2026-06-01：新增 `phase-3-handoff.md`
 - 2026-06-01：Phase 3 — 邀請制私人房後端（migration / Model / Policy / Controller / PrivateChannel / 測試）完成（執行者：Claude）
+- 2026-06-01：Phase 3 Review PASS；程式 commit 推送
+- 2026-06-01：新增 `phase-4-handoff.md`
 
 ---
 
@@ -302,7 +304,7 @@ None
 
 ## Next Steps
 
-1. 等待 `phase-4-handoff.md` 後指派 Phase 4（前端：Echo.private、ChatSidebar、Welcome/Dashboard）
+1. 將 [`phase-4-handoff.md`](phase-4-handoff.md) 交給執行 agent（前端 UI + Echo.private）
 2. 人類上佇署後依 [`docs/deployment.md`](../../docs/deployment.md) § 佈署後 Google 驗證（可與 Phase 4 並行）
 3. **勿**在未指派時開始 Phase 5
 

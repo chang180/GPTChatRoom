@@ -41,9 +41,8 @@
 
 ### 尚未完成
 
+- 私人房 **前端 UI**（Phase 4：側欄、Echo.private、Dashboard；後端 API 已完成）
 - presence / typing / online users
-- 更細的房間權限模型
-- private / presence channel 升級策略
 
 ## 重要實作事實
 
