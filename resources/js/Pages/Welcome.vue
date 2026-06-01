@@ -41,7 +41,7 @@ defineProps({
                                       class="px-4 py-2 text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-200">
                                     <i class="fas fa-tachometer-alt mr-2"></i>控制台
                                 </Link>
-                                <Link :href="route('chat')" 
+                                <Link :href="route('chat.index')" 
                                       class="px-6 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg hover:from-blue-600 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl">
                                     <i class="fas fa-comments mr-2"></i>開始聊天
                                 </Link>
@@ -113,10 +113,15 @@ defineProps({
                                 </Link>
                             </template>
                             <template v-else>
-                                <Link :href="route('chat')" 
+                                <Link :href="route('chat.index')"
                                       class="group px-8 py-4 bg-gradient-to-r from-green-500 to-blue-600 text-white text-lg font-semibold rounded-xl hover:from-green-600 hover:to-blue-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1">
                                     <i class="fas fa-comments mr-3 group-hover:animate-pulse"></i>
-                                    進入聊天室
+                                    公開主題聊天
+                                </Link>
+                                <Link :href="route('chat.private.index')"
+                                      class="px-8 py-4 border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 text-lg font-semibold rounded-xl hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400 transition-all duration-200">
+                                    <i class="fas fa-user-group mr-3"></i>
+                                    建立私人房
                                 </Link>
                             </template>
                         </template>

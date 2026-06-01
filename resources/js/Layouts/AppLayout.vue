@@ -63,9 +63,15 @@ const logout = () => {
                                 </NavLink>
                                 <NavLink
                                     :href="route('chat.index')"
-                                    :active="route().current('chat.index')"
+                                    :active="route().current('chat.index') || route().current('chat.theme')"
                                 >
-                                    ChatRoom
+                                    公開聊天
+                                </NavLink>
+                                <NavLink
+                                    :href="route('chat.private.index')"
+                                    :active="route().current('chat.private.*')"
+                                >
+                                    私人聊天
                                 </NavLink>
                             </div>
                         </div>
@@ -330,9 +336,15 @@ const logout = () => {
                         </ResponsiveNavLink>
                         <ResponsiveNavLink
                             :href="route('chat.index')"
-                            :active="route().current('chat.index')"
+                            :active="route().current('chat.index') || route().current('chat.theme')"
                         >
-                            ChatRoom
+                            公開聊天
+                        </ResponsiveNavLink>
+                        <ResponsiveNavLink
+                            :href="route('chat.private.index')"
+                            :active="route().current('chat.private.*')"
+                        >
+                            私人聊天
                         </ResponsiveNavLink>
                     </div>
 

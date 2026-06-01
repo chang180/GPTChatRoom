@@ -27,7 +27,7 @@
 | Phase 1 Laravel 13 | ✅ 完成 | 2026-06-01 | 見下方 Phase 1 執行回報 |
 | Phase 2 Google OAuth | ✅ 完成 | 2026-06-01 | 見下方 Phase 2 執行回報 |
 | Phase 3 私人房後端 | ✅ 完成 | 2026-06-01 | 見下方 Phase 3 執行回報 |
-| Phase 4 前端導覽 | ⏳ 未開始 | — | |
+| Phase 4 前端導覽 | ✅ 完成 | 2026-06-01 | 見下方 Phase 4 執行回報 |
 | Phase 5 整合驗證 | ⏳ 未開始 | — | |
 
 ---
@@ -251,6 +251,81 @@ Tests: 7 skipped, 77 passed (227 assertions)  — 既有 ChatRoom/主題房測�
 
 ---
 
+## Phase 4 執行回報
+
+**執行者：** Claude (Claude Code)
+**完成日期：** 2026-06-01
+**狀態：** ✅ 完成
+
+### Success Criteria
+
+- [x] 從 Dashboard 可進公開房與私人房列表（Dashboard 三張卡片 + AppLayout 導覽）
+- [x] 房內可切換主題／私人房，訊息與即時不 broken（ChatSidebar 導覽 + room/theme 參數分流）
+- [x] 私人房可建立、產生邀請連結（建立 modal、邀請 modal 複製 accept_url）；第二帳號 accept 後可聊天屬人類手動驗證
+- [x] 私人房使用 `Echo.private`；主題房仍 public channel（ADR-003）
+- [x] `npm run build` 成功；`php artisan test` 全綠（79 passed / 7 skipped）
+
+### 執行摘要
+
+新增 `ChatSidebar.vue`：區塊 A 四主題、區塊 B 私人房列表 +「建立新房」modal，並在私人房內提供「邀請成員」modal（POST `chat.private.invitations.store` → 複製 `accept_url`）；導覽以 `router.visit` 切換 `chat.theme` / `chat.private.show`。`ChatRoom.vue` 接上 Phase 3 props（`roomMode`/`privateRooms`/`members`/`canClear`）：移除頂部主題頁籤改用側欄、`subscribeToChatRoom` 依 `roomMode` 選 `Echo.private()` 或 `Echo.channel()`、send/stream/load-more/clear 改以 `roomRequestParams()`（私人房 `room=id`、主題房 `theme=slug`）、`canClear` 一律取後端 prop（移除前端推測）、無作用中私人房時停用輸入並提示。`AppLayout.vue` 新增「公開聊天 / 私人聊天」NavLink 與 `chat.theme` / `chat.private.*` 高亮（桌機 + 響應式）。`Pages/Welcome.vue` 修正失效的 `route('chat')` → `route('chat.index')`，並為登入者加「建立私人房」CTA。`Components/Welcome.vue`（Dashboard 內容）Quick Actions 改三張卡片：公開主題聊天 / 私人聊天室 / 個人資料。新增 2 個 Inertia 契約測試（index/show 的 `roomMode`/`members`/`canClear`）。
+
+### Files Changed
+
+新增：
+- `resources/js/Components/ChatSidebar.vue`
+
+修改：
+- `resources/js/Pages/ChatRoom.vue`（props、Echo.private 分支、room/theme 參數、canClear 後端 prop、側欄版面、無房停用輸入；移除已無用的 `switchTheme`/`isActiveTheme` 與 `router` import）
+- `resources/js/Layouts/AppLayout.vue`（私人聊天 NavLink + 高亮）
+- `resources/js/Pages/Welcome.vue`（修正 `route('chat')`、私人房 CTA）
+- `resources/js/Components/Welcome.vue`（Dashboard 三張卡片）
+- `tests/Feature/PrivateChatRoomTest.php`（+2 Inertia 契約測試）
+
+> 註：未新增 migration、未改 Policy 業務規則、未重做 Phase 3 後端 API；未動 `ChatRoomClient.vue`（沿用現況）。`.cursor/mcp.json` 與本 Phase 無關，未觸碰。
+
+### Verification
+
+```
+# npm run build
+✓ built（ChatRoom 62.37 kB、含新 ChatSidebar；僅 chunk >500kB 資訊性警告）
+
+# php artisan test
+Tests: 7 skipped, 79 passed (250 assertions)
+
+# vendor/bin/pint --dirty
+{"tool":"pint","result":"passed"}（本 Phase 無 PHP 變更）
+```
+
+### 手動驗證清單（建議由人類於佈署/本機執行）
+
+1. 帳號 A：Dashboard →「私人聊天室」卡片 → 側欄＋建立房 → 進入房 → 邀請成員（複製 accept_url）
+2. 帳號 B：開啟 `accept_url`（已登入）→ 進入同房
+3. B 發 direct message → A 即時看到（需 Ably + sanctum 私頻授權正常）
+4. 切換至「工作」主題房 → 仍為公開房即時同步
+5. 非成員 C 開私人房 URL → 403（後端 Policy 已於 Phase 3 測試覆蓋）
+
+### Deviations
+
+- **Dashboard 卡片改在 `Components/Welcome.vue`（Dashboard 實際內容元件）實作**，而非直接改 `Pages/Dashboard.vue`（後者僅 `<Welcome />` 容器）；效果等同 handoff 要求的三入口卡片。
+- **導覽切換邏輯放在 `ChatSidebar.vue` 內（`router.visit`）**，故 `ChatRoom.vue` 原本的 `switchTheme`/`isActiveTheme` 已無用並移除（連帶移除未使用的 `router` import），屬本次變更造成的孤兒清理。
+- **未使用 Jetstream `DialogModal`**，改以輕量 Tailwind overlay 自製建立/邀請 modal，避免額外 props/slot 相依；風格與既有元件一致（含 dark mode）。
+- **`members` 僅在標題列顯示「N 位成員」**（最小呈現）；完整成員管理 UI（移除成員按鈕等）未做，後端 `chat.private.members.destroy` 已就緒，可留待後續。
+
+### Issues / 風險留待 Phase 5
+
+- 真實即時同步（Ably 私頻 `Echo.private` + `/broadcasting/auth` 成員授權）需於可連 Ably 的環境由人類驗證；自動化測試僅覆蓋後端 channel 授權與 `broadcastOn`。
+- `ChatRoomClient.vue` 若仍在用，未納入私人房導覽（沿用現況）；Phase 5 整合驗證可一併確認是否棄用。
+- 全專案 README「真實功能狀態」更新屬 Phase 5。
+
+### Review 檢查點
+
+- [x] Echo.private 僅私人房；主題房仍 `Echo.channel`
+- [x] API 參數 room（私人房 id）vs theme（主題 slug）正確分流
+- [x] 未重做 Phase 3 後端（無 migration / Policy / API 變更）
+- [x] Welcome / Dashboard / AppLayout 已改版（含 `route('chat')` 修正）
+
+---
+
 ## Completed
 
 - 2026-06-01：交付 `.ai-dev/private-room/` 四份規格檔（plan / progress / decisions / handoff）
@@ -263,8 +338,10 @@ Tests: 7 skipped, 77 passed (227 assertions)  — 既有 ChatRoom/主題房測�
 - 2026-06-01：Phase 2 Review PASS；Google 佈署 E2E 改由人類上線後驗證（見 deployment.md）
 - 2026-06-01：新增 `phase-3-handoff.md`
 - 2026-06-01：Phase 3 — 邀請制私人房後端（migration / Model / Policy / Controller / PrivateChannel / 測試）完成（執行者：Claude）
+- 2026-06-01：Phase 4 — 前端導覽與私人房 UI（ChatSidebar、Echo.private、建立/邀請、Welcome/Dashboard/AppLayout 改版）完成（執行者：Claude）
 - 2026-06-01：Phase 3 Review PASS；程式 commit 推送
 - 2026-06-01：新增 `phase-4-handoff.md`
+- 2026-06-01：Phase 4 Review PASS；新增 `phase-5-handoff.md`
 
 ---
 
@@ -277,6 +354,7 @@ Tests: 7 skipped, 77 passed (227 assertions)  — 既有 ChatRoom/主題房測�
 | 2026-06-01 | Review 後補：根 README、`docs/*` Laravel 13；`deployment.md` 新增 Google OAuth 佈署說明 |
 | 2026-06-01 | Phase 2：config `enabled` 改用 `env('APP_ENV')`（避開 config 載入期 `app()->environment()` 失敗）；`.env.example` 受 gitignore 故 Google env 設定亦放 tracked `.env.build`；link 綁定採整頁 POST（非 Inertia，跨網域 redirect）。詳見 Phase 2 執行回報 |
 | 2026-06-01 | Phase 3：`isGlobalTheme()` 維持 slug-based（避免破壞既有 owned-room 回歸測試）；私人房訊息沿用既有端點以 `room` 參數識別；`max_uses` 已建欄位但暫不強制。詳見 Phase 3 執行回報 |
+| 2026-06-01 | Phase 4：Dashboard 卡片改於 `Components/Welcome.vue` 實作；導覽切換移至 `ChatSidebar`（移除 ChatRoom.vue 的 switchTheme/router import）；自製輕量 modal 而非 Jetstream DialogModal；members 僅標題列顯示人數。詳見 Phase 4 執行回報 |
 
 ---
 
@@ -302,11 +380,32 @@ None
 
 ---
 
+## Phase 4 Review（階段 C）
+
+**日期：** 2026-06-01  
+**結論：** ✅ **PASS**
+
+### 驗證摘要
+
+- `ChatRoom.vue`：`roomMode` 分流 `Echo.private` / `Echo.channel`；`roomRequestParams()` 私人房 `room`、主題房 `theme`；`canClear` 取自後端 prop
+- `ChatSidebar.vue`：雙區導覽、建立房、邀請複製 `accept_url`
+- `AppLayout` / `Welcome` / `Components/Welcome`：三入口與 `route('chat.index')` 修正
+- 測試：79 passed（含 +2 Inertia 契約）；`npm run build` 成功
+- 未重做 Phase 3 後端（無 migration / Policy 變更）
+
+### 非阻擋項（留 Phase 5 / 人類）
+
+- Ably 私頻即時同步需佈署或本機 Ably 手動驗證
+- `ChatRoomClient.vue` 未納入私人房導覽
+- `.ai-dev/README.md` §4 仍寫 public channel only（Phase 5 更新）
+
+---
+
 ## Next Steps
 
-1. 將 [`phase-4-handoff.md`](phase-4-handoff.md) 交給執行 agent（前端 UI + Echo.private）
-2. 人類上佇署後依 [`docs/deployment.md`](../../docs/deployment.md) § 佈署後 Google 驗證（可與 Phase 4 並行）
-3. **勿**在未指派時開始 Phase 5
+1. 將 [`phase-5-handoff.md`](phase-5-handoff.md) 交給執行 agent（整合驗證 + README 狀態）
+2. 人類執行 Phase 4/5 手動清單（兩帳號邀請、Ably 私頻、Google 佈署環境；見 plan Verification Plan）
+3. **勿**在未指派時開始 Phase 5 以外的新功能
 
 ---
 
@@ -317,4 +416,5 @@ None
 | Phase 1 Review | ✅ PASS | 2026-06-01 |
 | Phase 2 Review | ✅ PASS | 2026-06-01 |
 | Phase 3 Review | ✅ PASS | 2026-06-01 |
+| Phase 4 Review | ✅ PASS | 2026-06-01 |
 | 全專案 Review | ⏳ 未開始 | Phase 5 完成後 |

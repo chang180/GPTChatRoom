@@ -11,8 +11,8 @@
 | **1** | [`phase-1-handoff.md`](phase-1-handoff.md) | ✅ 完成（Laravel 13） |
 | **2** | [`phase-2-handoff.md`](phase-2-handoff.md) | ✅ 完成（Google OAuth） |
 | **3** | [`phase-3-handoff.md`](phase-3-handoff.md) | ✅ 完成（私人房後端） |
-| **4** | **[`phase-4-handoff.md`](phase-4-handoff.md)** | ✅ 已就緒 — **目前指派此檔** |
-| 5 | `phase-5-handoff.md` | ⏳ Phase 4 驗收後 |
+| **4** | [`phase-4-handoff.md`](phase-4-handoff.md) | ✅ 完成（前端導覽） |
+| **5** | **[`phase-5-handoff.md`](phase-5-handoff.md)** | ✅ 已就緒 — **目前指派此檔** |
 
 **執行 agent：** 只打開**當前被指派的** `phase-N-handoff.md`。
 
@@ -44,8 +44,8 @@
 | Phase 1 | ✅ PASS（2026-06-01） |
 | Phase 2 | ✅ PASS（2026-06-01） |
 | Phase 3 | ✅ PASS（2026-06-01） |
-| Phase 4 | ⏳ 待實作完成後 review |
-| 全專案 | Phase 5 後 |
+| Phase 4 | ✅ PASS（2026-06-01） |
+| 全專案 | ⏳ Phase 5 完成後 |
 
 ---
 
@@ -53,10 +53,9 @@
 
 | 錯誤 | 正確做法 |
 |------|----------|
-| 私人房仍用 `Echo.channel` | `Echo.private` |
-| 私人房發訊仍只傳 `theme` | 傳 `room: id` |
-| Phase 4 重做 migration | 只改 Vue + 必要 props |
-| 未回寫 progress.md | handoff 內有格式 |
+| Phase 5 又改 migration | 僅文件、測試補強、README 對齊 |
+| 略過手動驗收清單 | 寫入 progress Verification |
+| README 仍寫「僅 public channel」 | Phase 5 必更新 § 真實功能狀態 |
 
 ---
 

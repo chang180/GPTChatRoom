@@ -71,14 +71,24 @@ import { route } from 'ziggy-js';
         </div>
 
         <!-- Quick Actions -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
             <Link :href="route('chat.index')" class="group p-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl text-white hover:from-blue-600 hover:to-purple-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1">
                 <div class="flex items-center justify-between">
                     <div>
-                        <h3 class="text-xl font-bold mb-2">開始聊天</h3>
-                        <p class="text-blue-100">與 GPT 智能助手進行對話</p>
+                        <h3 class="text-xl font-bold mb-2">公開主題聊天</h3>
+                        <p class="text-blue-100">與 GPT 在四個主題房對話</p>
                     </div>
-                    <i class="fas fa-arrow-right text-2xl group-hover:translate-x-1 transition-transform duration-200"></i>
+                    <i class="fas fa-comments text-2xl group-hover:translate-x-1 transition-transform duration-200"></i>
+                </div>
+            </Link>
+
+            <Link :href="route('chat.private.index')" class="group p-6 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl text-white hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-1">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h3 class="text-xl font-bold mb-2">私人聊天室</h3>
+                        <p class="text-emerald-100">建立群組、邀請朋友一起聊</p>
+                    </div>
+                    <i class="fas fa-user-group text-2xl group-hover:translate-x-1 transition-transform duration-200"></i>
                 </div>
             </Link>
 

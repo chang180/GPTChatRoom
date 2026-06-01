@@ -1,10 +1,10 @@
 <script setup>
 import AppLayout from '@/Layouts/AppLayout.vue';
+import ChatSidebar from '@/Components/ChatSidebar.vue';
 import { ref, onMounted, onUnmounted, computed, nextTick, watch, reactive } from 'vue';
 import axios from 'axios';
 import { route } from 'ziggy-js';
 import { marked } from 'marked';
-import { router } from '@inertiajs/vue3';
 
 const props = defineProps({
     messages: Array,
@@ -12,6 +12,10 @@ const props = defineProps({
     user: Object,
     currentChatRoom: Object,
     themes: Array,
+    roomMode: { type: String, default: 'theme' },
+    privateRooms: { type: Array, default: () => [] },
+    members: { type: Array, default: () => [] },
+    canClear: { type: Boolean, default: false },
 });
 
 // 創建一個純淨的消息數組，避免序列化問題
@@ -28,6 +32,9 @@ const activeBroadcastChannel = ref(null);
 // 主題聊天室相關
 const currentChatRoom = ref(props.currentChatRoom);
 const themes = ref(props.themes || []);
+const roomMode = ref(props.roomMode || 'theme');
+const privateRooms = ref(props.privateRooms || []);
+const members = ref(props.members || []);
 const messagesContainer = ref(null);
 
 // 監聽 props 變化，更新響應式變數
@@ -39,14 +46,28 @@ watch(() => props.themes, (newThemes) => {
     themes.value = newThemes || [];
 });
 
-// 計算屬性：判斷是否為當前活躍的主題
-const isActiveTheme = (themeSlug) => {
-    return currentChatRoom.value && currentChatRoom.value.slug === themeSlug;
-};
-
-const canClearCurrentChatRoom = computed(() => {
-    return currentChatRoom.value ? !themes.value.some((theme) => theme.id === currentChatRoom.value.id) : false;
+watch(() => props.roomMode, (mode) => {
+    roomMode.value = mode || 'theme';
 });
+
+watch(() => props.privateRooms, (rooms) => {
+    privateRooms.value = rooms || [];
+});
+
+watch(() => props.members, (list) => {
+    members.value = list || [];
+});
+
+const isPrivateRoom = computed(() => roomMode.value === 'private');
+const hasActiveRoom = computed(() => !!currentChatRoom.value?.id);
+
+// 私人房以 room=id 識別；主題房以 theme=slug（ADR-003 / Phase 3 resolveRoomForAction）
+const roomRequestParams = () => isPrivateRoom.value
+    ? { room: currentChatRoom.value?.id }
+    : { theme: currentChatRoom.value?.slug || 'work' };
+
+// canClear 一律以後端 prop 為準（取代前端推測）
+const canClearCurrentChatRoom = computed(() => props.canClear === true);
 
 // 新增的功能變數
 const messageType = ref('ai'); // 'ai' 或 'direct'
@@ -107,7 +128,12 @@ const subscribeToChatRoom = (chatRoom) => {
     const channelName = `chat-room.${chatRoom.id}`;
     activeBroadcastChannel.value = channelName;
 
-    getEcho().channel(channelName)
+    // 私人房用 private channel（需 sanctum 授權）；主題房維持 public channel（ADR-003）
+    const channel = isPrivateRoom.value
+        ? getEcho().private(channelName)
+        : getEcho().channel(channelName);
+
+    channel
         .listen('.chat.message.created', ({ message }) => {
             if (message.chat_room_id !== currentChatRoom.value?.id) {
                 return;
@@ -162,7 +188,7 @@ const loadMoreMessages = async () => {
             params: {
                 page: nextPage,
                 per_page: messagesPerPage.value,
-                theme: currentChatRoom.value?.slug || 'work',
+                ...roomRequestParams(),
             }
         });
         
@@ -239,7 +265,7 @@ const sendMessage = async () => {
             try {
                 const response = await axios.post(route('chat.send-message'), {
                     message: messageContent,
-                    theme: currentChatRoom.value?.slug || 'work',
+                    ...roomRequestParams(),
                     message_type: 'direct'
                 }, {
                     headers: getSocketHeaders(),
@@ -287,9 +313,9 @@ const sendMessage = async () => {
             const response = await axios({
                 method: 'POST',
                 url: route('chat.send-message-stream'),
-                data: { 
+                data: {
                     message: messageContent,
-                    theme: currentChatRoom.value?.slug || 'work'
+                    ...roomRequestParams(),
                 },
                 responseType: 'text',
                 signal: abortController.value.signal, // 添加取消信號
@@ -465,7 +491,7 @@ const clearAllMessages = async () => {
             // 調用 API 清除服務器端的記錄
             const response = await axios.delete(route('chat.clear'), {
                 data: {
-                    theme: currentChatRoom.value?.slug || 'work'
+                    ...roomRequestParams(),
                 },
                 headers: getSocketHeaders(),
             });
@@ -493,24 +519,6 @@ const clearAllMessages = async () => {
         } finally {
             loading.value = false;
         }
-    }
-};
-
-// 切換主題聊天室
-const switchTheme = async (themeSlug) => {
-    try {
-        loading.value = true;
-        
-        // 使用 Inertia 導航到新的主題聊天室
-        await router.visit(route('chat.theme', { theme: themeSlug }), {
-            preserveState: false,
-            preserveScroll: false,
-            replace: true, // 使用 replace 而不是 push
-        });
-    } catch (error) {
-        console.error('切換主題失敗:', error);
-    } finally {
-        loading.value = false;
     }
 };
 
@@ -570,6 +578,9 @@ watch(() => props.currentChatRoom?.id, (newRoomId, oldRoomId) => {
     }
 
     if (newRoomId && newRoomId !== oldRoomId) {
+        // 確保以最新房型訂閱（private vs public channel）
+        roomMode.value = props.roomMode || 'theme';
+        currentChatRoom.value = props.currentChatRoom;
         subscribeToChatRoom(props.currentChatRoom);
     }
 });
@@ -578,31 +589,23 @@ watch(() => props.currentChatRoom?.id, (newRoomId, oldRoomId) => {
 <template>
     <AppLayout title="Chatroom">
         <!-- 聊天室主容器 - 佔滿可用空間，移除頂部間距 -->
-        <div class="h-screen flex flex-col">
-            <div class="flex-1 flex flex-col bg-white dark:bg-gray-900">
-                <!-- 主題頁籤區域 -->
-                <div class="bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-                    <div class="flex">
-                        <button
-                            v-for="theme in themes"
-                            :key="theme.id"
-                            @click="switchTheme(theme.slug)"
-                            :class="[
-                                'px-6 py-3 text-sm font-medium border-b-2 transition-colors duration-200',
-                                isActiveTheme(theme.slug)
-                                    ? 'text-blue-600 dark:text-blue-400 border-blue-600 dark:border-blue-400 bg-white dark:bg-gray-900'
-                                    : 'text-gray-600 dark:text-gray-400 border-transparent hover:text-gray-800 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600'
-                            ]"
-                        >
-                            <i :class="{
-                                'fas fa-briefcase': theme.slug === 'work',
-                                'fas fa-graduation-cap': theme.slug === 'study',
-                                'fas fa-lightbulb': theme.slug === 'creative',
-                                'fas fa-comments': theme.slug === 'daily'
-                            }" class="mr-2"></i>
-                            {{ theme.name }}
-                        </button>
-                    </div>
+        <div class="h-screen flex">
+            <ChatSidebar
+                :themes="themes"
+                :private-rooms="privateRooms"
+                :current-chat-room="currentChatRoom"
+                :room-mode="roomMode"
+            />
+            <div class="flex-1 flex flex-col bg-white dark:bg-gray-900 min-w-0">
+                <!-- 目前房間標題 -->
+                <div class="bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-2 flex items-center justify-between">
+                    <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-200 truncate">
+                        <i :class="isPrivateRoom ? 'fas fa-user-group' : 'fas fa-hashtag'" class="mr-1"></i>
+                        {{ currentChatRoom?.name || (isPrivateRoom ? '請從左側選擇或建立私人房' : '聊天室') }}
+                    </h2>
+                    <span v-if="isPrivateRoom && members.length" class="text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">
+                        <i class="fas fa-users mr-1"></i>{{ members.length }} 位成員
+                    </span>
                 </div>
 
                 <!-- 控制區域 -->
@@ -689,14 +692,14 @@ watch(() => props.currentChatRoom?.id, (newRoomId, oldRoomId) => {
                             <input
                                 v-model="newMessage"
                                 @keyup.enter="sendMessage"
-                                :placeholder="messageType === 'ai' ? '向 AI 發問...' : '輸入您的訊息...'"
+                                :placeholder="!hasActiveRoom ? '請先從左側選擇或建立私人房' : (messageType === 'ai' ? '向 AI 發問...' : '輸入您的訊息...')"
                                 class="flex-1 p-3 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400 placeholder-gray-500 dark:placeholder-gray-400"
-                                :disabled="loading"
+                                :disabled="loading || !hasActiveRoom"
                             />
                             <button
                                 @click="sendMessage"
                                 class="px-6 py-3 text-white bg-blue-600 dark:bg-blue-700 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-                                :disabled="loading || !newMessage.trim()"
+                                :disabled="loading || !newMessage.trim() || !hasActiveRoom"
                             >
                                 <i v-if="!loading" :class="messageType === 'ai' ? 'fas fa-robot mr-2' : 'fas fa-paper-plane mr-2'"></i>
                                 <i v-else class="fas fa-spinner fa-spin mr-2"></i>

@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\GPTService;
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\PrivateChannel;
+use Inertia\Testing\AssertableInertia as Assert;
 
 use function Pest\Laravel\actingAs;
 
@@ -278,4 +279,30 @@ it('keeps the global theme send-message flow working', function () {
         ])
         ->assertOk()
         ->assertJsonPath('gptResponse', 'theme reply');
+});
+
+it('shares private room mode props on the index page (front-end contract)', function () {
+    $user = User::factory()->create();
+
+    actingAs($user)
+        ->get(route('chat.private.index'))
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('ChatRoom')
+            ->where('roomMode', 'private')
+            ->has('privateRooms')
+        );
+});
+
+it('shares private room props including members on the show page', function () {
+    $owner = User::factory()->create();
+    $room = privateRoomWithOwner($owner);
+
+    actingAs($owner)
+        ->get(route('chat.private.show', $room))
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('ChatRoom')
+            ->where('roomMode', 'private')
+            ->where('canClear', true)
+            ->has('members', 1)
+        );
 });
