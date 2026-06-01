@@ -1,12 +1,21 @@
 <?php
 
-use Illuminate\Foundation\Application;
+use App\Http\Controllers\ChatRoomController;
+use App\Http\Controllers\GoogleAuthController;
+use App\Http\Controllers\HomeController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
-use App\Http\Controllers\HomeController;
-use App\Http\Controllers\ChatRoomController;
 
 Route::get('/', [HomeController::class, 'index'])->name('home');
+
+// Google OAuth（ADR-007：未啟用時 controller 內 abort(404)）
+Route::get('/auth/google/redirect', [GoogleAuthController::class, 'redirect'])->name('auth.google.redirect');
+Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback'])->name('auth.google.callback');
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::post('/user/google/link', [GoogleAuthController::class, 'linkRedirect'])->name('user.google.link');
+    Route::delete('/user/google/unlink', [GoogleAuthController::class, 'unlink'])->name('user.google.unlink');
+});
 
 Route::middleware([
     'auth:sanctum',
@@ -19,7 +28,7 @@ Route::middleware([
 
     // Chat room route
     Route::get('/chat', [ChatRoomController::class, 'index'])->name('chat.index');
-    
+
     // Load more messages for infinite scroll
     Route::get('/chat/load-more', [ChatRoomController::class, 'loadMoreMessages'])->name('chat.load-more');
 

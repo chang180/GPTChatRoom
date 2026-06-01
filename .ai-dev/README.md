@@ -26,6 +26,7 @@
 ### 已完成
 
 - Jetstream 認證與驗證流程
+- **Google OAuth**（Phase 2）：Socialite 註冊／登入、設定頁綁定；**本機 `local` 強制關閉**（ADR-007）。真實 Google 端到端請於**已佈署環境**依 [`docs/deployment.md`](../docs/deployment.md) § 佈署後 Google 驗證手動確認。
 - 4 個固定主題聊天室：`work`、`study`、`creative`、`daily`
 - 訊息持久化
 - 歷史訊息載入與分頁

@@ -9,9 +9,9 @@
 | Phase | handoff 檔案 | 狀態 |
 |-------|----------------|------|
 | **1** | [`phase-1-handoff.md`](phase-1-handoff.md) | ✅ 完成（Laravel 13） |
-| **2** | **[`phase-2-handoff.md`](phase-2-handoff.md)** | ✅ 已就緒 — **目前指派此檔** |
-| 3 | `phase-3-handoff.md` | ⏳ Phase 2 驗收後 |
-| 4 | `phase-4-handoff.md` | ⏳ 尚未建立 |
+| **2** | [`phase-2-handoff.md`](phase-2-handoff.md) | ✅ 完成（Google OAuth） |
+| **3** | **[`phase-3-handoff.md`](phase-3-handoff.md)** | ✅ 已就緒 — **目前指派此檔** |
+| 4 | `phase-4-handoff.md` | ⏳ Phase 3 驗收後 |
 | 5 | `phase-5-handoff.md` | ⏳ 尚未建立 |
 
 **執行 agent：** 只打開**當前被指派的** `phase-N-handoff.md`。
@@ -42,7 +42,8 @@
 | Phase | 狀態 |
 |-------|------|
 | Phase 1 | ✅ PASS（2026-06-01） |
-| Phase 2 | ⏳ 待實作完成後 review |
+| Phase 2 | ✅ PASS（2026-06-01）；Google 佇署 E2E 由人類上線後驗證 |
+| Phase 3 | ⏳ 待實作完成後 review |
 | 全專案 | Phase 5 後 |
 
 各 Phase review prompt 見對應 `phase-N-handoff.md` 末段。
@@ -53,8 +54,8 @@
 
 | 錯誤 | 正確做法 |
 |------|----------|
-| Phase 2 順便做私人房 | 僅 OAuth |
-| 本機開啟 Google OAuth | ADR-007 local 強制 false |
+| Phase 3 順便做 ChatSidebar / Welcome | 僅後端 + 廣播；UI 屬 Phase 4 |
+| 主題房改 PrivateChannel | 僅 `private_group` |
 | 未回寫 progress.md | 每 Phase handoff 內有格式 |
 
 ---

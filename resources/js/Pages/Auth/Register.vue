@@ -7,6 +7,7 @@ import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
+import GoogleAuthButton from '@/Components/GoogleAuthButton.vue';
 
 const form = useForm({
     name: '',
@@ -163,6 +164,9 @@ const submit = () => {
                     {{ form.processing ? '註冊中...' : '立即註冊' }}
                 </PrimaryButton>
             </div>
+
+            <!-- Google 註冊 / 停用說明 -->
+            <GoogleAuthButton label="使用 Google 註冊" />
 
             <!-- 登入連結 -->
             <div class="text-center pt-4 border-t border-gray-200 dark:border-gray-600">

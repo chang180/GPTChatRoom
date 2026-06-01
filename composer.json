@@ -12,6 +12,7 @@
         "laravel/jetstream": "^5.1",
         "laravel/nightwatch": "^1.7",
         "laravel/sanctum": "^4.0",
+        "laravel/socialite": "^5.27",
         "laravel/tinker": "^3.0",
         "openai-php/laravel": "^0.19",
         "predis/predis": "^3.2",

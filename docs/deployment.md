@@ -47,7 +47,26 @@ GOOGLE_CLIENT_SECRET=...
 GOOGLE_REDIRECT_URI=https://your-domain.example/auth/google/callback
 ```
 
-4. `php artisan config:cache` 後驗證登入頁是否出現「使用 Google 繼續」。
+4. 佈署後執行 migration（含 Google 欄位）：
+
+```bash
+php artisan migrate --force
+```
+
+5. `php artisan config:cache`（若慣例有快取設定）。
+
+### 佈署後 Google 驗證（由維運／人類在 staging / production 執行）
+
+自動化測試（`GoogleAuthTest`）已在 CI／本機以 mock 覆蓋；**真實 Google 端到端不在本機驗收**，請在已佈署環境依下列清單手動確認一次：
+
+- [ ] 登入頁出現「使用 Google 繼續」（非停用說明區塊）
+- [ ] 點擊後可完成 Google 同意並回到 `/auth/google/callback`，成功進入 Dashboard
+- [ ] 以**新 Google 帳號**註冊可建立帳號並登入
+- [ ] 以**已存在 email、未綁 Google** 的帳號嘗試 Google 登入 → 不應建立重複帳號，應提示改以密碼登入後至設定綁定
+- [ ] 已登入 → 個人設定 → 連結 Google → 綁定成功
+- [ ] 已設密碼的帳號可解除 Google 綁定；純 Google 帳號（無密碼）解除時應被拒絕
+
+驗證通過後無需再改程式；若失敗請查 `GOOGLE_REDIRECT_URI` 是否與 Console 完全一致、`APP_ENV` 非 `local`、`GOOGLE_OAUTH_ENABLED=true`。
 
 ### 本機開發
 
@@ -56,10 +75,11 @@ GOOGLE_REDIRECT_URI=https://your-domain.example/auth/google/callback
 
 ### 新增資料庫物件
 
-Migration（依序執行）：
+Migration（依序執行；`php artisan migrate` 會自動套用尚未執行的檔案）：
 
 1. `2026_06_01_141232_create_conversation_summaries_table.php`
 2. `2026_06_01_141730_add_summarize_lock_columns_to_conversation_summaries_table.php`
+3. `2026_06_01_152744_add_google_columns_to_users_table.php`（`google_id`、token 欄位；`password` nullable）
 
 表 `conversation_summaries` 欄位重點：
 

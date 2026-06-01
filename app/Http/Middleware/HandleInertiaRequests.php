@@ -41,6 +41,14 @@ class HandleInertiaRequests extends Middleware
                 'error' => fn () => $request->session()->get('error'),
                 'success' => fn () => $request->session()->get('success'),
             ],
+            'googleOAuth' => [
+                'enabled' => (bool) config('services.google.enabled'),
+                'disabledReason' => config('services.google.disabled_reason'),
+            ],
+            'googleAccount' => fn () => $request->user() ? [
+                'linked' => filled($request->user()->google_id),
+                'hasPassword' => filled($request->user()->password),
+            ] : null,
         ]);
     }
 }

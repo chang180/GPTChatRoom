@@ -3,7 +3,7 @@
 > **範圍：** 僅 Phase 2。完成後更新 [`progress.md`](progress.md) 並 **STOP**。  
 > **規格：** [`plan.md`](plan.md) § Phase 2、[`decisions.md`](decisions.md) ADR-004、ADR-007。  
 > **前置：** Phase 1 ✅（Laravel 13.12.0，見 progress「Phase 1 執行回報」）。  
-> **下一階段：** `phase-3-handoff.md` 待 Phase 2 驗收後才提供。
+> **下一階段：** [`phase-3-handoff.md`](phase-3-handoff.md)（私人房後端）。Google 佇署 E2E 由人類上線後依 `docs/deployment.md` 驗證，非 Phase 3 前置。
 
 ---
 

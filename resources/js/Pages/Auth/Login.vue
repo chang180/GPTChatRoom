@@ -7,6 +7,7 @@ import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
+import GoogleAuthButton from '@/Components/GoogleAuthButton.vue';
 
 defineProps({
     canResetPassword: Boolean,
@@ -149,6 +150,9 @@ const submit = () => {
                     {{ form.processing ? '登入中...' : '登入' }}
                 </PrimaryButton>
             </div>
+
+            <!-- Google 登入 / 停用說明 -->
+            <GoogleAuthButton label="使用 Google 登入" />
 
             <!-- 註冊連結 -->
             <div class="text-center pt-4 border-t border-gray-200 dark:border-gray-600">
