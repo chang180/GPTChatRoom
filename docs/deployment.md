@@ -28,6 +28,32 @@ php artisan view:cache
 - `.env` 必須設定有效的 `OPENAI_API_KEY`（小結與聊天共用）
 - 需能對 OpenAI 發出額外一次非串流 `chat.create`（觸發小結時）
 
+## Google OAuth（Phase 2 起）
+
+Google 登入／註冊**僅在已佈署環境**啟用；`APP_ENV=local` 時應用程式會強制關閉，無需在本機設定 Console redirect。
+
+### 佈署時（staging / production）
+
+1. [Google Cloud Console](https://console.cloud.google.com/) 建立 OAuth 用戶端（Web）。
+2. **授權重新導向 URI** 須包含實際網域，例如：  
+   `https://your-domain.example/auth/google/callback`  
+   （與 `.env` 的 `GOOGLE_REDIRECT_URI` 完全一致。）
+3. `.env` 設定：
+
+```env
+GOOGLE_OAUTH_ENABLED=true
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+GOOGLE_REDIRECT_URI=https://your-domain.example/auth/google/callback
+```
+
+4. `php artisan config:cache` 後驗證登入頁是否出現「使用 Google 繼續」。
+
+### 本機開發
+
+- 使用電子郵件／密碼（Fortify）；登入頁會顯示 Google 不可用說明。
+- 勿將 production 的 redirect URI 指到 `localhost`，除非另行在 Console 登錄且你確定要測本機 OAuth（本專案預設仍由 `local` 環境關閉）。
+
 ### 新增資料庫物件
 
 Migration（依序執行）：

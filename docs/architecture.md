@@ -4,7 +4,7 @@
 
 ## 1. 技術組成
 
-- Backend: Laravel 12, PHP 8.4
+- Backend: Laravel 13, PHP 8.4
 - Frontend: Vue 3, Inertia.js 2, Vite 6
 - Auth: Laravel Jetstream + Sanctum + Fortify
 - AI: `openai-php/laravel`

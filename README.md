@@ -1,6 +1,6 @@
 # GPT Chat Room
 
-Laravel 12 + Inertia.js + Vue 3 的聊天學習專案，目標是整理出一個具備多聊天室、AI 問答、訊息歷史與後續即時同步能力的完整實作。
+Laravel 13 + Inertia.js + Vue 3 的聊天學習專案，目標是整理出一個具備多聊天室、AI 問答、訊息歷史與後續即時同步能力的完整實作。
 
 ## 目前狀態
 
@@ -15,7 +15,7 @@ Laravel 12 + Inertia.js + Vue 3 的聊天學習專案，目標是整理出一個
 
 ## 技術棧
 
-- Backend: Laravel 12, Jetstream, Sanctum, OpenAI PHP SDK
+- Backend: Laravel 13, Jetstream, Sanctum, OpenAI PHP SDK
 - Frontend: Vue 3, Inertia.js, Vite, Tailwind CSS
 - Database: SQLite
 - Cache: Laravel Cache

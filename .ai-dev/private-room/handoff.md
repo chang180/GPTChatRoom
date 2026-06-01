@@ -1,0 +1,64 @@
+# Handoff: private-room（總覽）
+
+本目錄為**唯一規格來源**。分階段 handoff 獨立成檔，**一次只交付一個 Phase**。
+
+---
+
+## 階段 handoff 索引
+
+| Phase | handoff 檔案 | 狀態 |
+|-------|----------------|------|
+| **1** | [`phase-1-handoff.md`](phase-1-handoff.md) | ✅ 完成（Laravel 13） |
+| **2** | **[`phase-2-handoff.md`](phase-2-handoff.md)** | ✅ 已就緒 — **目前指派此檔** |
+| 3 | `phase-3-handoff.md` | ⏳ Phase 2 驗收後 |
+| 4 | `phase-4-handoff.md` | ⏳ 尚未建立 |
+| 5 | `phase-5-handoff.md` | ⏳ 尚未建立 |
+
+**執行 agent：** 只打開**當前被指派的** `phase-N-handoff.md`。
+
+---
+
+## STOP 規則（全 Phase 通用）
+
+1. **一次只做一個 Phase。**
+2. 完成該 Phase 的 Success Criteria 後，依該 Phase handoff 的 **「progress.md 回寫」** 更新 [`progress.md`](progress.md)，然後 **立即停止**。
+3. 禁止在未指派時執行下一 Phase。
+4. 禁止修改 `.cursor/plans/`（若存在）。
+
+---
+
+## 共用文件
+
+| 檔案 | 用途 |
+|------|------|
+| [`plan.md`](plan.md) | 完整規格與各 Phase Success Criteria |
+| [`decisions.md`](decisions.md) | ADR（產品與架構決策） |
+| [`progress.md`](progress.md) | **各 Phase 執行後必回寫**，供 review 驗收 |
+
+---
+
+## Review（階段 C）
+
+| Phase | 狀態 |
+|-------|------|
+| Phase 1 | ✅ PASS（2026-06-01） |
+| Phase 2 | ⏳ 待實作完成後 review |
+| 全專案 | Phase 5 後 |
+
+各 Phase review prompt 見對應 `phase-N-handoff.md` 末段。
+
+---
+
+## 常見錯誤
+
+| 錯誤 | 正確做法 |
+|------|----------|
+| Phase 2 順便做私人房 | 僅 OAuth |
+| 本機開啟 Google OAuth | ADR-007 local 強制 false |
+| 未回寫 progress.md | 每 Phase handoff 內有格式 |
+
+---
+
+## 聯絡規格
+
+產品決策變更 → 更新 `decisions.md` + `plan.md`，並在 `progress.md` Deviations 記錄。

@@ -11,7 +11,7 @@
 
 ## 專案定位
 
-這是一個 Laravel 12 + Inertia.js + Vue 3 的學習專案，主題是多聊天室 AI chat app。
+這是一個 Laravel 13 + Inertia.js + Vue 3 的學習專案，主題是多聊天室 AI chat app。
 
 目前已到一個可用階段，且已完成第一版多人即時同步。現況是：
 

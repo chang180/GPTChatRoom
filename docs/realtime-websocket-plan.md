@@ -28,7 +28,7 @@
 
 建議第一版使用 Ably，理由：
 
-- Laravel 12 官方 broadcasting 文件直接列出 Ably 支援
+- Laravel 13 官方 broadcasting 文件直接列出 Ably 支援
 - 可用 Laravel 的 broadcasting 機制接上
 - 官方文件明確提供 Laravel / Echo 整合方向
 - 官方免費方案目前可註冊且不需信用卡，適合學習專案

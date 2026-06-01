@@ -48,7 +48,7 @@
 - **Vite 6.2** - 建構工具
 
 ### 2. 應用層 (Application Layer)
-- **Laravel 12.0** - PHP 框架
+- **Laravel 13** - PHP 框架
 - **Laravel Jetstream** - 認證系統
 - **Laravel Sanctum** - API 認證
 
