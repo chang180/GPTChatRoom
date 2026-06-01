@@ -75,7 +75,8 @@ class ChatRoom extends Model
      */
     public static function getGlobalThemes(): array
     {
-        return static::whereIn('slug', array_keys(self::GLOBAL_THEME_DEFINITIONS))
+        return self::query()
+            ->whereIn('slug', array_keys(self::GLOBAL_THEME_DEFINITIONS))
             ->orderByRaw("CASE slug WHEN 'work' THEN 1 WHEN 'study' THEN 2 WHEN 'creative' THEN 3 WHEN 'daily' THEN 4 END")
             ->get()
             ->toArray();
@@ -86,7 +87,8 @@ class ChatRoom extends Model
      */
     public static function getGlobalTheme(string $slug): ?self
     {
-        return static::where('slug', $slug)
+        return self::query()
+            ->where('slug', $slug)
             ->first();
     }
 
