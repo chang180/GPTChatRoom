@@ -3,7 +3,6 @@
 namespace App\Events;
 
 use App\Models\Message;
-use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
@@ -19,13 +18,13 @@ class ChatMessageCreated implements ShouldBroadcastNow
         public Message $message,
         public ?string $messageType = null,
     ) {
-        $this->message->loadMissing('user');
+        $this->message->loadMissing('user', 'chatRoom');
     }
 
     public function broadcastOn(): array
     {
         return [
-            new Channel("chat-room.{$this->message->chat_room_id}"),
+            $this->message->chatRoom->broadcastChannel(),
         ];
     }
 

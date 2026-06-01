@@ -2,6 +2,7 @@
 
 namespace App\Events;
 
+use App\Models\ChatRoom;
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
@@ -17,13 +18,14 @@ class ChatRoomCleared implements ShouldBroadcastNow
     public function __construct(
         public int $chatRoomId,
         public int $deletedCount,
-    ) {
-    }
+    ) {}
 
     public function broadcastOn(): array
     {
+        $room = ChatRoom::find($this->chatRoomId);
+
         return [
-            new Channel("chat-room.{$this->chatRoomId}"),
+            $room?->broadcastChannel() ?? new Channel("chat-room.{$this->chatRoomId}"),
         ];
     }
 

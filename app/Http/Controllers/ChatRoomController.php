@@ -13,6 +13,7 @@ use App\Services\ConversationContextService;
 use App\Services\GPTService;
 use App\Services\MessageCacheService;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
@@ -57,6 +58,8 @@ class ChatRoomController extends Controller
             'user' => $user,
             'currentChatRoom' => $chatRoom,
             'themes' => $themes,
+            'roomMode' => $chatRoom->isPrivateGroup() ? 'private' : 'theme',
+            'canClear' => $this->canClearChatRoom($user, $chatRoom),
         ]);
     }
 
@@ -73,7 +76,7 @@ class ChatRoomController extends Controller
         $user = Auth::user();
         $page = $request->get('page', 1);
         $perPage = $request->get('per_page', 30);
-        $chatRoom = $this->resolveChatRoom($request, $user);
+        $chatRoom = $this->resolveRoomForAction($request, $user, 'view');
 
         // 使用快取服務載入更多訊息
         $cachedData = $this->messageCacheService->getCachedMessages($page, $perPage, $chatRoom->id);
@@ -96,7 +99,7 @@ class ChatRoomController extends Controller
         ]);
 
         $user = Auth::user();
-        $chatRoom = $this->resolveChatRoom($request, $user, $data['theme'] ?? null);
+        $chatRoom = $this->resolveRoomForAction($request, $user, 'sendMessage', $data['theme'] ?? null);
 
         // 創建新消息，設置 sender_type 為 'user'
         $message = Message::create([
@@ -168,7 +171,7 @@ class ChatRoomController extends Controller
     /**
      * 發送消息並以流式方式返回響應
      *
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function sendMessageStream(Request $request)
     {
@@ -184,7 +187,7 @@ class ChatRoomController extends Controller
         ]);
 
         $user = Auth::user();
-        $chatRoom = $this->resolveChatRoom($request, $user, $data['theme'] ?? null);
+        $chatRoom = $this->resolveRoomForAction($request, $user, 'sendMessage', $data['theme'] ?? null);
 
         // 創建新消息，設置 sender_type 為 'user'
         $message = Message::create([
@@ -272,7 +275,7 @@ class ChatRoomController extends Controller
         }
 
         $user = Auth::user();
-        $chatRoom = $this->resolveChatRoom($request, $user, $request->input('theme'));
+        $chatRoom = $this->resolveRoomForAction($request, $user, 'clear', $request->input('theme'));
 
         if (! $chatRoom) {
             return response()->json([
@@ -313,6 +316,29 @@ class ChatRoomController extends Controller
         }
     }
 
+    /**
+     * 解析訊息操作對象：帶 `room` 參數時視為私人房並套用 Policy；
+     * 否則沿用既有主題 slug 解析（ADR-003：主題房對所有登入者開放）。
+     */
+    protected function resolveRoomForAction(Request $request, User $user, string $ability, ?string $theme = null): ChatRoom
+    {
+        $roomParam = $request->input('room');
+
+        if ($roomParam !== null && $roomParam !== '') {
+            $room = ChatRoom::find($roomParam);
+
+            if (! $room || ! $room->isPrivateGroup()) {
+                abort(404);
+            }
+
+            $this->authorize($ability, $room);
+
+            return $room;
+        }
+
+        return $this->resolveChatRoom($request, $user, $theme);
+    }
+
     protected function resolveChatRoom(Request $request, User $user, ?string $theme = null): ChatRoom
     {
         $resolvedTheme = $theme ?? $request->route('theme') ?? $request->get('theme', 'work');
@@ -330,6 +356,10 @@ class ChatRoomController extends Controller
 
     protected function canClearChatRoom(User $user, ChatRoom $chatRoom): bool
     {
+        if ($chatRoom->isPrivateGroup()) {
+            return $user->can('clear', $chatRoom);
+        }
+
         if ($chatRoom->isGlobalTheme()) {
             return false;
         }

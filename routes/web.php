@@ -3,6 +3,7 @@
 use App\Http\Controllers\ChatRoomController;
 use App\Http\Controllers\GoogleAuthController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\PrivateChatRoomController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -40,6 +41,14 @@ Route::middleware([
 
     // 清除聊天室記錄
     Route::delete('/chat/clear', [ChatRoomController::class, 'clearChatRoom'])->name('chat.clear');
+
+    // 邀請制私人房（須在 /chat/{theme} 之前註冊，避免 'private' 被當主題 slug 解析）
+    Route::get('/chat/private', [PrivateChatRoomController::class, 'index'])->name('chat.private.index');
+    Route::post('/chat/private', [PrivateChatRoomController::class, 'store'])->name('chat.private.store');
+    Route::get('/chat/private/{chatRoom}', [PrivateChatRoomController::class, 'show'])->name('chat.private.show');
+    Route::post('/chat/private/{chatRoom}/invitations', [PrivateChatRoomController::class, 'storeInvitation'])->name('chat.private.invitations.store');
+    Route::post('/chat/invitations/{token}/accept', [PrivateChatRoomController::class, 'acceptInvitation'])->name('chat.invitations.accept');
+    Route::delete('/chat/private/{chatRoom}/members/{user}', [PrivateChatRoomController::class, 'destroyMember'])->name('chat.private.members.destroy');
 
     Route::get('/chat/{theme}', [ChatRoomController::class, 'index'])->name('chat.theme');
 });

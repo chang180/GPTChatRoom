@@ -8,5 +8,16 @@ Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
 });
 
 Broadcast::channel('chat-room.{chatRoomId}', function ($user, $chatRoomId) {
-    return ChatRoom::whereKey($chatRoomId)->exists();
+    $room = ChatRoom::find($chatRoomId);
+
+    if (! $room) {
+        return false;
+    }
+
+    // 主題房（public）：任何登入者皆可訂閱；私人房：僅成員（ADR-003）。
+    if ($room->isGlobalTheme()) {
+        return $user !== null;
+    }
+
+    return $room->hasMember($user);
 });
