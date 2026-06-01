@@ -28,7 +28,7 @@
 | Phase 2 Google OAuth | ✅ 完成 | 2026-06-01 | 見下方 Phase 2 執行回報 |
 | Phase 3 私人房後端 | ✅ 完成 | 2026-06-01 | 見下方 Phase 3 執行回報 |
 | Phase 4 前端導覽 | ✅ 完成 | 2026-06-01 | 見下方 Phase 4 執行回報 |
-| Phase 5 整合驗證 | ⏳ 未開始 | — | |
+| Phase 5 整合驗證 | ✅ 完成 | 2026-06-01 | 見下方 Phase 5 執行回報 |
 
 ---
 
@@ -326,6 +326,75 @@ Tests: 7 skipped, 79 passed (250 assertions)
 
 ---
 
+## Phase 5 執行回報
+
+**執行者：** Cursor Agent  
+**完成日期：** 2026-06-01  
+**狀態：** ✅ 完成（文件對齊 + 自動驗證；佇署端到端待人類）
+
+### Success Criteria
+
+- [x] `php artisan test` 全綠（79 passed / 7 skipped）
+- [x] `npm run build` 成功
+- [x] `.ai-dev/README.md` 已對齊（私人房、Google、雙軌 channel）
+- [x] `docs/README.md`、`docs/architecture.md` 小幅更新
+- [x] `progress.md` 含 Verification 對照表
+- [x] **階段 B（Phase 1–5）標記完成**
+
+### 執行摘要
+
+程式面經盤點：**無需新增 migration 或 Phase 5 功能程式**；`route('chat')` 已不存在；`ChatRoomClient.vue` 已不在倉庫（僅舊 markdown 提及）。本 Phase 以文件對齊與自動測試/build 驗證為主。Google 佇署驗證、Ably 雙帳號私頻即時、邀請流程 UI 端到端由人類於佇署環境執行。
+
+### Files Changed
+
+- `.ai-dev/README.md`（真實功能狀態、雙軌 channel、私人房、建議方向）
+- `docs/README.md`（現況摘要、已完成/未完成）
+- `docs/architecture.md`（控制器/模型/路由/資料表/channel 說明）
+- `.ai-dev/private-room/progress.md`（本回報）
+- `.ai-dev/private-room/handoff.md`（Phase 5 完成）
+
+> 未改應用程式 `.php` / `.vue`；未觸碰 `.cursor/mcp.json`。
+
+### Verification（自動）
+
+```
+php artisan test
+Tests: 7 skipped, 79 passed (250 assertions)
+
+npm run build
+✓ built in ~1.6s
+```
+
+### Verification Plan 對照（plan.md）
+
+| # | 項目 | 結果 |
+|---|------|------|
+| 1 | Google 註冊（佇署環境） | **待人類／佇署**（見 deployment.md） |
+| 2 | 同 email 不重複建帳 | **自動** ✅ `GoogleAuthTest` |
+| 2b | local Google 關閉 + 說明 | **自動** ✅ `GoogleAuthTest` + UI props |
+| 3 | 建立私人房 + 邀請連結 | **待人類／佇署**（UI 已實作；需 Ably 可選） |
+| 4 | 第二帳號 accept 後同房 | **待人類／佇署** |
+| 5 | 非成員 403 | **自動** ✅ `PrivateChatRoomTest` |
+| 6 | 主題房雙瀏覽器即時 | **待人類／佇署**（Ably） |
+| 7 | Dashboard / Welcome 三入口 | **程式已就緒**；佇署時人類點擊確認 |
+
+### Deviations
+
+- 未新增 smoke 測試：`PrivateChatRoomTest` + `GoogleAuthTest` 已覆蓋主要契約，避免重複。
+- 未改 `docs/realtime-websocket-plan.md`（歷史規劃文，仍以 architecture + `.ai-dev/README` 為準）。
+
+### 階段 B 總結
+
+private-room **Phase 1–5 全部完成**：L13 升級 → Google OAuth → 私人房後端 → 前端導覽 → 文件/驗收對齊。可進入**全專案 Review（階段 C）**。
+
+### Review 檢查點（Phase 5）
+
+- [x] README 不再宣稱「僅 public channel」
+- [x] 測試與 build 證據
+- [x] 無多餘程式變更
+
+---
+
 ## Completed
 
 - 2026-06-01：交付 `.ai-dev/private-room/` 四份規格檔（plan / progress / decisions / handoff）
@@ -342,6 +411,7 @@ Tests: 7 skipped, 79 passed (250 assertions)
 - 2026-06-01：Phase 3 Review PASS；程式 commit 推送
 - 2026-06-01：新增 `phase-4-handoff.md`
 - 2026-06-01：Phase 4 Review PASS；新增 `phase-5-handoff.md`
+- 2026-06-01：Phase 5 — 整合驗證與 README/docs 對齊完成；階段 B 結束
 
 ---
 
@@ -403,9 +473,9 @@ None
 
 ## Next Steps
 
-1. 將 [`phase-5-handoff.md`](phase-5-handoff.md) 交給執行 agent（整合驗證 + README 狀態）
-2. 人類執行 Phase 4/5 手動清單（兩帳號邀請、Ably 私頻、Google 佈署環境；見 plan Verification Plan）
-3. **勿**在未指派時開始 Phase 5 以外的新功能
+1. **人類／佇署環境：** 依上表「待人類」項與 [`docs/deployment.md`](../../docs/deployment.md) 做 Google + Ably + 邀請流程端到端
+2. 可選：指派**全專案 Review**（階段 C，對照 plan + decisions + 全套測試）
+3. 新功能（presence、成員管理 UI）需另開規格，**勿**在未指派時延伸 private-room scope
 
 ---
 
@@ -417,4 +487,4 @@ None
 | Phase 2 Review | ✅ PASS | 2026-06-01 |
 | Phase 3 Review | ✅ PASS | 2026-06-01 |
 | Phase 4 Review | ✅ PASS | 2026-06-01 |
-| 全專案 Review | ⏳ 未開始 | Phase 5 完成後 |
+| 全專案 Review | ⏳ 待指派 | Phase 5 ✅；佇署驗證由人類進行 |

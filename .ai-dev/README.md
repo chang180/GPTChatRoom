@@ -5,9 +5,9 @@
 ## 文件入口
 
 - **Agent 總索引（套件版本 / 規範）：** [`../AGENTS.md`](../AGENTS.md) →  canonical [`.cursor/rules/laravel-boost.mdc`](../.cursor/rules/laravel-boost.mdc)
-- **分 phase 實作（private-room）：** [`.ai-dev/private-room/handoff.md`](private-room/handoff.md)
+- **分 phase 實作（private-room）：** [`.ai-dev/private-room/handoff.md`](private-room/handoff.md)（Phase 1–5 已完成，見 `progress.md`）
 - 專案開發文件：[`../docs/README.md`](../docs/README.md)
-- **生產佈署提醒**：[`../docs/deployment.md`](../docs/deployment.md)（pull 後必跑 migration）
+- **生產佈署提醒**：[`../docs/deployment.md`](../docs/deployment.md)（pull 後必跑 migration、Google OAuth 驗證）
 - 架構說明：[`../docs/architecture.md`](../docs/architecture.md)
 - 即時通訊規劃：[`../docs/realtime-websocket-plan.md`](../docs/realtime-websocket-plan.md)
 
@@ -17,32 +17,28 @@
 
 目前已到一個可用階段，且已完成第一版多人即時同步。現況是：
 
-- 有多聊天室
-- 有 AI 回覆串流
-- 有 Ably 房間級事件同步
+- 四個公開主題房 + 邀請制私人小群組房
+- 有 AI 回覆串流（SSE）
+- 有 Ably 房間級事件同步（主題 public channel、私人 private channel）
 
 ## 真實功能狀態
 
 ### 已完成
 
 - Jetstream 認證與驗證流程
-- **Google OAuth**（Phase 2）：Socialite 註冊／登入、設定頁綁定；**本機 `local` 強制關閉**（ADR-007）。真實 Google 端到端請於**已佈署環境**依 [`docs/deployment.md`](../docs/deployment.md) § 佈署後 Google 驗證手動確認。
-- 4 個固定主題聊天室：`work`、`study`、`creative`、`daily`
-- 訊息持久化
-- 歷史訊息載入與分頁
-- 直接訊息模式
-- AI 問答模式
-- GPT SSE 串流回覆
-- 同房最近訊息會帶入 AI 上下文
-- 超過 20 則時增量對話小結切點（`ConversationContextService` + `conversation_summaries`）
-- 清除整個聊天室訊息
-- Ably WebSocket Phase 1
-- 多瀏覽器房間同步
+- **Google OAuth**：Socialite 註冊／登入、設定頁綁定／解除；**本機 `APP_ENV=local` 強制關閉**（ADR-007，登入頁顯示說明）。真實 Google 端到端請於**已佈署環境**依 [`docs/deployment.md`](../docs/deployment.md) § 佈署後 Google 驗證手動確認。
+- 4 個固定主題聊天室：`work`、`study`、`creative`、`daily`（`global_theme`，公開頻道）
+- **邀請制私人聊天室**（`private_group`）：owner 建立、複製邀請連結、登入後 accept、最多 20 人；`ChatRoomPolicy` + `chat_room_members` / `chat_room_invitations`
+- 前端 **`ChatSidebar`**：主題區 + 私人房列表、建立房／邀請 modal；`ChatRoom.vue` 依 `roomMode` 使用 `Echo.private()` 或 `Echo.channel()`
+- Dashboard / Welcome / AppLayout 三入口（公開聊天、私人聊天、設定）
+- 訊息持久化、歷史分頁、direct / AI 模式、GPT SSE 串流、對話小結切點、清除聊天室（權限依房型：主題房規則 vs 私人房僅 owner）
+- Ably WebSocket + Laravel Echo；多瀏覽器房間同步
 
 ### 尚未完成
 
-- 私人房 **前端 UI**（Phase 4：側欄、Echo.private、Dashboard；後端 API 已完成）
 - presence / typing / online users
+- 私人房完整成員管理 UI（後端已有 `chat.private.members.destroy`，前端僅顯示人數）
+- `max_uses` 邀請次數欄位尚未強制
 
 ## 重要實作事實
 
@@ -54,52 +50,57 @@
 
 房間級共享事件則透過 Ably + Laravel Echo 同步。
 
-### 2. 多聊天室是固定主題房，不是每人自建房
+### 2. 多聊天室：四主題房 + 私人小群組
 
-`ChatRoom` model 目前實際使用的是 4 個全域主題聊天室。雖然 model 裡仍保留 `getDefaultForUser()`，但主流程優先走全域主題房。
+主流程使用 4 個全域主題聊天室（slug：`work` / `study` / `creative` / `daily`）。另支援使用者建立的 **`private_group`** 邀請制小群組（`PrivateChatRoomController`），與主題房並存。Model 仍保留 `getDefaultForUser()` 等舊 API，新功能以 `type` + Policy 為準。
 
 ### 3. OpenAI 模型目前寫死，上下文含小結切點
 
 `app/Services/GPTService.php` 使用 `gpt-5-nano`。`ConversationContextService` 在訊息超過 20 則時會先 summarize 並寫入 `conversation_summaries`，再組「小結 + 最近 20 則」送 API。佈署時見 [`../docs/deployment.md`](../docs/deployment.md)。
 
-### 4. 即時同步目前使用 public channel
+### 4. 即時廣播：主題 public、私人 private
 
-Phase 1 目前採用 public channel `chat-room.{id}`，不是 private channel。
+| 房型 | `ChatRoom::type` | Laravel 廣播 | 前端 Echo | `routes/channels.php` |
+|------|------------------|--------------|-----------|------------------------|
+| 主題房 | `global_theme` | `Channel` `chat-room.{id}` | `Echo.channel()` | 任何登入者可訂閱 |
+| 私人房 | `private_group` | `PrivateChannel` 同名 | `Echo.private()` | 僅 `chat_room_members` 成員 |
 
-原因：
-
-- 4 個主題聊天室本來就是全域共享
-- 目前沒有真正的房間授權模型
-- public channel 複雜度更低，適合目前階段
+私人房發訊／load-more／clear 以 query/body **`room`**（房 id）識別；主題房仍以 **`theme`**（slug）。見 `ChatRoomController::resolveRoomForAction()`。
 
 ### 5. 快取已存在，但不是完整即時方案
 
 `MessageCacheService` 負責頁面訊息快取與失效，不處理即時同步。
 
+### 6. 舊版 `ChatRoomClient.vue`
+
+倉庫內**已無**此檔；聊天唯一 Inertia 頁為 `ChatRoom.vue`。部分根目錄舊 markdown 仍提及該檔，可忽略。
+
 ## 建議開發方向
 
 下一階段優先順序：
 
-1. 依 [`../docs/phase-2-checklist.md`](../docs/phase-2-checklist.md) 補 broadcast 測試
-2. 明確定義聊天室清空權限
-3. 規劃 presence / typing
-4. 再評估是否升級成 private / presence channel
+1. 佇署環境：Google OAuth + Ably 私頻端到端（見 `docs/deployment.md`）
+2. 依 [`../docs/phase-2-checklist.md`](../docs/phase-2-checklist.md) 補 broadcast 整合測試（可選）
+3. presence / typing（需 presence channel 設計）
+4. 私人房成員管理 UI（移除成員等）
 
 ## 開發時的判斷原則
 
 - 不要把 SSE 誤判成 WebSocket
 - 不要忽略現在已經有 Ably 房間級同步
 - 若要做 WebSocket，優先保留現有 SSE 串流，不要一次重寫整個聊天流程
+- **主題房**維持 public channel；**私人房**必須 private channel + Policy，勿混用
 - 若要做學習型低成本部署，第一版優先考慮 Ably
-- 若房間仍是全域共享，不要為了技術正統性強行改回 private channel
 
 ## 常用檔案
 
-- `routes/web.php`
+- `routes/web.php`、`routes/channels.php`
 - `app/Http/Controllers/ChatRoomController.php`
+- `app/Http/Controllers/PrivateChatRoomController.php`
+- `app/Http/Controllers/GoogleAuthController.php`
+- `app/Policies/ChatRoomPolicy.php`
 - `app/Services/GPTService.php`
-- `app/Services/MessageCacheService.php`
 - `app/Models/ChatRoom.php`
-- `app/Models/Message.php`
 - `resources/js/Pages/ChatRoom.vue`
+- `resources/js/Components/ChatSidebar.vue`
 - `resources/js/bootstrap.js`

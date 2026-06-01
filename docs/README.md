@@ -14,27 +14,26 @@
 - 架構：Laravel 13 + Inertia.js + Vue 3
 - Agent 規範：[`../AGENTS.md`](../AGENTS.md)
 - 資料庫：SQLite
-- 聊天室：4 個固定全域主題聊天室
+- 聊天室：4 個固定全域主題聊天室 + 邀請制私人小群組（最多 20 人）
+- 認證：Jetstream + Google OAuth（本機 `local` 關閉，佈署環境啟用）
 - AI 回應：OpenAI `gpt-5-nano`
-- 即時體驗：AI 串流使用 SSE，多使用者共享聊天室同步使用 Ably WebSocket
+- 即時體驗：AI 串流 SSE；房間事件 Ably（主題 public channel、私人 private channel）
 
 ## 本階段已完成
 
-- Jetstream 認證流程
-- 聊天頁與主題聊天室切換
-- 訊息儲存與歷史分頁
-- 直接訊息與 AI 問答兩種模式
-- GPT 串流回覆
-- 最近聊天室訊息的 AI 上下文
-- 超過 20 則時的增量對話小結切點（含 DB 鎖）
-- 聊天室清除
-- Ably broadcasting / Echo Phase 1
-- 多瀏覽器即時同步驗證
+- Jetstream 與 Google OAuth（設定頁綁定／解除）
+- 聊天頁、主題房與私人房側欄切換（`ChatSidebar`）
+- 私人房建立、邀請連結、accept 流程
+- 訊息儲存與歷史分頁、direct / AI 模式、GPT 串流、對話小結切點
+- 聊天室清除（依房型 Policy）
+- Ably broadcasting / Echo（`Echo.channel` vs `Echo.private`）
+- 後端 Feature 測試（含 `GoogleAuthTest`、`PrivateChatRoomTest`）
 
 ## 本階段尚未完成
 
 - 在線狀態 / typing / 已讀等 presence 類功能
-- 更細的房間授權與成員模型
+- 私人房成員管理 UI（移除成員等；API 已存在）
+- 佇署環境：Google 與 Ably 私頻需人類端到端驗證（見 [`deployment.md`](deployment.md)）
 
 ## 建議閱讀順序
 

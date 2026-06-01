@@ -17,17 +17,24 @@
 app/
   Http/Controllers/
     ChatRoomController.php
+    PrivateChatRoomController.php
+    GoogleAuthController.php
     HomeController.php
   Models/
     ChatRoom.php
+    ChatRoomMember.php
+    ChatRoomInvitation.php
     Message.php
     User.php
+  Policies/
+    ChatRoomPolicy.php
   Services/
     GPTService.php
     MessageCacheService.php
 resources/
   js/
     Layouts/AppLayout.vue
+    Components/ChatSidebar.vue
     Pages/ChatRoom.vue
     Pages/Dashboard.vue
     Pages/Welcome.vue
@@ -94,13 +101,15 @@ docs/
 - 用 `onDownloadProgress` 手動解析 SSE 片段
 - 訂閱 Ably 房間事件並同步其他使用者操作
 - 處理無限滾動載入更多歷史訊息
-- 清除聊天室與切換主題聊天室
+- 清除聊天室與切換主題／私人聊天室（`ChatSidebar` + `roomMode`）
+- 私人房以 `room` 參數呼叫 API；主題房以 `theme` slug
 
 注意：
 
 - AI 串流是 HTTP response stream，不是 WebSocket
 - 目前使用 `@ably/laravel-echo`
-- 目前聊天室同步使用 public channel `chat-room.{id}`
+- **主題房**（`global_theme`）：public channel `chat-room.{id}` → `Echo.channel()`
+- **私人房**（`private_group`）：`PrivateChannel` 同名 → `Echo.private()`，授權見 `routes/channels.php`
 
 ### `resources/js/bootstrap.js`
 
@@ -113,14 +122,12 @@ docs/
 
 ## 5. 路由
 
-`routes/web.php` 目前聊天相關路由都在登入保護下：
+`routes/web.php` 聊天與 OAuth 重點（多數在 `auth` middleware 下）：
 
-- `GET /chat`
-- `GET /chat/{theme}`
-- `GET /chat/load-more`
-- `POST /chat/send-message`
-- `POST /chat/send-message-stream`
-- `DELETE /chat/clear`
+- Google（`config('services.google.enabled')` 為 false 時 redirect 404）：`auth/google/*`、`user/google/link|unlink`
+- `GET /chat`、`GET /chat/{theme}`（主題房）
+- `GET|POST /chat/private`、`GET /chat/private/{chatRoom}`、邀請與 accept、移除成員
+- `GET /chat/load-more`、`POST /chat/send-message`、`POST /chat/send-message-stream`、`DELETE /chat/clear`（主題用 `theme`，私人用 `room`）
 - `GET|POST /broadcasting/auth`
 
 ## 6. 資料模型
@@ -130,23 +137,16 @@ docs/
 用途：
 
 - 存放聊天室定義
-- 目前主要使用 4 個全域主題聊天室
+- `type`：`global_theme`（四主題）或 `private_group`（邀請制小群）
+- `created_by`：私人房建立者（owner）
 
 關鍵欄位：
 
-- `id`
-- `name`
-- `slug`
-- `description`
-- `user_id`
-- `is_active`
+- `id`, `name`, `slug`, `description`, `user_id`, `is_active`, `type`, `created_by`
 
-目前主題聊天室 slug：
+主題聊天室 slug：`work`、`study`、`creative`、`daily`
 
-- `work`
-- `study`
-- `creative`
-- `daily`
+相關表：`chat_room_members`（成員）、`chat_room_invitations`（邀請 token / 過期 / revoke）
 
 ### `conversation_summaries`
 
@@ -217,7 +217,8 @@ docs/
 - GPT 串流 token 仍只回到發送請求的那個瀏覽器
 - `clearChatRoom()` 會清空整個主題聊天室資料，因此目前是全域清除，不是清除個人視角
 - 目前沒有 presence channel、typing、已讀設計
-- 目前聊天室同步使用 public channel；若未來要做房間授權，需再升級為 private / presence channel
+- 私人房已使用 `PrivateChannel` + Policy；主題房仍為 public channel
+- 私人房成員移除等僅後端 API，前端 UI 未完整
 
 ## 9. 下一步建議
 

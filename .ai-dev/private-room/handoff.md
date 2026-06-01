@@ -1,6 +1,8 @@
 # Handoff: private-room（總覽）
 
-本目錄為**唯一規格來源**。分階段 handoff 獨立成檔，**一次只交付一個 Phase**。
+本目錄為**唯一規格來源**。分階段 handoff 獨立成檔。
+
+**階段 B（Phase 1–5）已完成**（2026-06-01）。詳見 [`progress.md`](progress.md)。
 
 ---
 
@@ -8,22 +10,19 @@
 
 | Phase | handoff 檔案 | 狀態 |
 |-------|----------------|------|
-| **1** | [`phase-1-handoff.md`](phase-1-handoff.md) | ✅ 完成（Laravel 13） |
-| **2** | [`phase-2-handoff.md`](phase-2-handoff.md) | ✅ 完成（Google OAuth） |
-| **3** | [`phase-3-handoff.md`](phase-3-handoff.md) | ✅ 完成（私人房後端） |
-| **4** | [`phase-4-handoff.md`](phase-4-handoff.md) | ✅ 完成（前端導覽） |
-| **5** | **[`phase-5-handoff.md`](phase-5-handoff.md)** | ✅ 已就緒 — **目前指派此檔** |
+| **1** | [`phase-1-handoff.md`](phase-1-handoff.md) | ✅ |
+| **2** | [`phase-2-handoff.md`](phase-2-handoff.md) | ✅ |
+| **3** | [`phase-3-handoff.md`](phase-3-handoff.md) | ✅ |
+| **4** | [`phase-4-handoff.md`](phase-4-handoff.md) | ✅ |
+| **5** | [`phase-5-handoff.md`](phase-5-handoff.md) | ✅ |
 
-**執行 agent：** 只打開**當前被指派的** `phase-N-handoff.md`。
+**新工作：** 勿再指派 Phase 1–5；佇署驗證見 `progress.md` Verification Plan；新功能另開規格。
 
 ---
 
 ## STOP 規則（全 Phase 通用）
 
-1. **一次只做一個 Phase。**
-2. 完成該 Phase 的 Success Criteria 後，依該 Phase handoff 的 **「progress.md 回寫」** 更新 [`progress.md`](progress.md)，然後 **立即停止**。
-3. 禁止在未指派時執行下一 Phase。
-4. 禁止修改 `.cursor/plans/`（若存在）。
+階段 B 已結束。若修 bug 或新功能，依 [`plan.md`](plan.md) / [`decisions.md`](decisions.md) 另開任務，並更新 `progress.md` Deviations。
 
 ---
 
@@ -31,9 +30,9 @@
 
 | 檔案 | 用途 |
 |------|------|
-| [`plan.md`](plan.md) | 完整規格與各 Phase Success Criteria |
-| [`decisions.md`](decisions.md) | ADR（產品與架構決策） |
-| [`progress.md`](progress.md) | **各 Phase 執行後必回寫**，供 review 驗收 |
+| [`plan.md`](plan.md) | 完整規格 |
+| [`decisions.md`](decisions.md) | ADR |
+| [`progress.md`](progress.md) | 各 Phase 回報 + 佇署驗收對照表 |
 
 ---
 
@@ -41,21 +40,10 @@
 
 | Phase | 狀態 |
 |-------|------|
-| Phase 1 | ✅ PASS（2026-06-01） |
-| Phase 2 | ✅ PASS（2026-06-01） |
-| Phase 3 | ✅ PASS（2026-06-01） |
-| Phase 4 | ✅ PASS（2026-06-01） |
-| 全專案 | ⏳ Phase 5 完成後 |
-
----
-
-## 常見錯誤
-
-| 錯誤 | 正確做法 |
-|------|----------|
-| Phase 5 又改 migration | 僅文件、測試補強、README 對齊 |
-| 略過手動驗收清單 | 寫入 progress Verification |
-| README 仍寫「僅 public channel」 | Phase 5 必更新 § 真實功能狀態 |
+| Phase 1–4 | ✅ PASS |
+| Phase 5 | ✅ 完成（文件/自動驗證） |
+| 全專案 | ⏳ 待指派 |
+| 佇署 E2E | 人類（Google、Ably、邀請） |
 
 ---
 
