@@ -3,27 +3,26 @@ window.axios = axios;
 
 window.axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
 
-const getAblySocketId = () => {
+const getBroadcastSocketId = () => {
     const echo = window.Echo;
 
-    if (!echo || echo.options?.broadcaster !== 'ably') {
+    if (!echo || echo.options?.broadcaster !== 'reverb') {
         return null;
     }
 
-    const connection = echo.connector?.ably?.connection;
-    const connectionKey = connection?.key;
+    const connection = echo.connector?.pusher?.connection;
 
-    if (!connectionKey || connection?.state !== 'connected') {
+    if (connection?.state !== 'connected') {
         return null;
     }
 
     return echo.socketId();
 };
 
-window.getAblySocketId = getAblySocketId;
+window.getBroadcastSocketId = getBroadcastSocketId;
 
 window.axios.interceptors.request.use((config) => {
-    const socketId = getAblySocketId();
+    const socketId = getBroadcastSocketId();
 
     if (socketId) {
         config.headers = config.headers || {};
@@ -34,30 +33,36 @@ window.axios.interceptors.request.use((config) => {
 });
 
 const shouldInitializeEcho = () =>
-    import.meta.env.VITE_ABLY_ENABLED === 'true'
+    import.meta.env.VITE_REVERB_ENABLED === 'true'
     && window.__broadcasting?.enabled === true;
 
 /**
- * Ably + Echo 體積大：僅在佇署且後端啟用廣播時動態載入，避免塞進主 chunk。
+ * Echo + pusher-js 體積大：僅在佇署且後端啟用廣播時動態載入，避免塞進主 chunk。
  */
 const initializeEcho = async () => {
     if (!shouldInitializeEcho()) {
         return;
     }
 
-    const [{ default: Echo }, ablyModule] = await Promise.all([
-        import('@ably/laravel-echo'),
-        import('ably'),
+    const [{ default: Echo }, { default: Pusher }] = await Promise.all([
+        import('laravel-echo'),
+        import('pusher-js'),
     ]);
 
-    window.Ably = ablyModule;
+    window.Pusher = Pusher;
     window.Echo = new Echo({
-        broadcaster: 'ably',
+        broadcaster: 'reverb',
+        key: import.meta.env.VITE_REVERB_APP_KEY,
+        wsHost: import.meta.env.VITE_REVERB_HOST,
+        wsPort: import.meta.env.VITE_REVERB_PORT ?? 80,
+        wssPort: import.meta.env.VITE_REVERB_PORT ?? 443,
+        forceTLS: (import.meta.env.VITE_REVERB_SCHEME ?? 'https') === 'https',
+        enabledTransports: ['ws', 'wss'],
         authEndpoint: `${window.location.origin}/broadcasting/auth`,
         withoutInterceptors: true,
     });
 };
 
-if (import.meta.env.VITE_ABLY_ENABLED === 'true') {
+if (import.meta.env.VITE_REVERB_ENABLED === 'true') {
     void initializeEcho();
 }

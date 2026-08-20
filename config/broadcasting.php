@@ -1,8 +1,15 @@
 <?php
 
-$defaultBroadcaster = env('BROADCAST_CONNECTION') === 'ably' && ! env('ABLY_KEY')
-    ? 'log'
-    : env('BROADCAST_CONNECTION', 'null');
+$requiredKeyByBroadcaster = [
+    'ably' => 'ABLY_KEY',
+    'reverb' => 'REVERB_APP_KEY',
+];
+
+$defaultBroadcaster = env('BROADCAST_CONNECTION', 'null');
+
+if (isset($requiredKeyByBroadcaster[$defaultBroadcaster]) && ! env($requiredKeyByBroadcaster[$defaultBroadcaster])) {
+    $defaultBroadcaster = 'log';
+}
 
 return [
 
@@ -23,15 +30,17 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Client-side Echo (Ably)
+    | Client-side Echo
     |--------------------------------------------------------------------------
     |
     | When false, the browser must not initialize Laravel Echo (e.g. local
-    | BROADCAST_CONNECTION=log or missing ABLY_KEY). Prevents Ably auth errors.
+    | BROADCAST_CONNECTION=log or a missing key for the active broadcaster).
+    | Prevents connection/auth errors against a broadcaster that isn't set up.
     |
     */
 
-    'client_enabled' => $defaultBroadcaster === 'ably' && filled(env('ABLY_KEY')),
+    'client_enabled' => isset($requiredKeyByBroadcaster[$defaultBroadcaster])
+        && filled(env($requiredKeyByBroadcaster[$defaultBroadcaster])),
 
     /*
     |--------------------------------------------------------------------------

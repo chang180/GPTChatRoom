@@ -89,7 +89,7 @@ const generateMessageId = () => {
 const getEcho = () => window.Echo;
 
 const getSocketHeaders = () => {
-    const socketId = window.getAblySocketId?.();
+    const socketId = window.getBroadcastSocketId?.();
 
     return socketId ? { 'X-Socket-ID': socketId } : {};
 };

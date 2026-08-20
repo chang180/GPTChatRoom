@@ -30,8 +30,8 @@ export default defineConfig({
                         return;
                     }
 
-                    if (id.includes('ably') || id.includes('@ably')) {
-                        return 'vendor-ably';
+                    if (id.includes('laravel-echo') || id.includes('pusher-js')) {
+                        return 'vendor-echo';
                     }
 
                     if (id.includes('marked')) {

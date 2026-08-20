@@ -34,7 +34,7 @@
             })();
         </script>
 
-        {{-- Echo 僅在後端 ably + ABLY_KEY 就緒時啟用（與 config/broadcasting.php client_enabled 一致） --}}
+        {{-- Echo 僅在後端廣播驅動與其對應金鑰就緒時啟用（與 config/broadcasting.php client_enabled 一致） --}}
         <script>
             window.__broadcasting = @json(['enabled' => (bool) config('broadcasting.client_enabled')]);
         </script>
