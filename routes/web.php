@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\UserManagementController;
 use App\Http\Controllers\ChatRoomController;
 use App\Http\Controllers\GoogleAuthController;
 use App\Http\Controllers\HomeController;
@@ -30,6 +31,11 @@ Route::middleware([
     Route::get('/dashboard', function () {
         return Inertia::render('Dashboard');
     })->name('dashboard');
+
+    Route::middleware('admin')->prefix('admin')->name('admin.')->group(function () {
+        Route::get('/', [UserManagementController::class, 'index'])->name('dashboard');
+        Route::patch('/users/{user}', [UserManagementController::class, 'update'])->name('users.update');
+    });
 
     // Chat room route
     Route::get('/chat', [ChatRoomController::class, 'index'])->name('chat.index');

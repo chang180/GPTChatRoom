@@ -10,6 +10,9 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Jetstream\HasProfilePhoto;
 use Laravel\Sanctum\HasApiTokens;
 
+/**
+ * @mixin IdeHelperUser
+ */
 class User extends Authenticatable
 {
     use HasApiTokens;
@@ -28,6 +31,7 @@ class User extends Authenticatable
         'email',
         'password',
         'google_id',
+        'is_admin',
     ];
 
     /**
@@ -63,7 +67,20 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'is_admin' => 'boolean',
         ];
+    }
+
+    public function isAdmin(): bool
+    {
+        return (bool) $this->is_admin;
+    }
+
+    public static function assignRoleForNewUser(self $user): void
+    {
+        if (static::query()->count() === 1) {
+            $user->forceFill(['is_admin' => true])->save();
+        }
     }
 
     public function messages()

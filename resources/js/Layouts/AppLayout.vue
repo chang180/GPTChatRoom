@@ -73,6 +73,13 @@ const logout = () => {
                                 >
                                     私人聊天
                                 </NavLink>
+                                <NavLink
+                                    v-if="$page.props.auth.user.is_admin"
+                                    :href="route('admin.dashboard')"
+                                    :active="route().current('admin.*')"
+                                >
+                                    管理
+                                </NavLink>
                             </div>
                         </div>
 
@@ -352,6 +359,13 @@ const logout = () => {
                             :active="route().current('chat.private.*')"
                         >
                             私人聊天
+                        </ResponsiveNavLink>
+                        <ResponsiveNavLink
+                            v-if="$page.props.auth.user.is_admin"
+                            :href="route('admin.dashboard')"
+                            :active="route().current('admin.*')"
+                        >
+                            管理
                         </ResponsiveNavLink>
                     </div>
 

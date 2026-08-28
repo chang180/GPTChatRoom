@@ -17,11 +17,9 @@ npm-debug.log
 yarn-error.log
 /.fleet
 /.idea
-/.vscode
 
-# Laravel IDE Helper files
-_ide_helper.php
-_ide_helper_models.php
+# Laravel IDE Helper — committed so Intelephense works out of the box.
+# Regenerate after model changes: composer ide-helper
 
 # SSL certificates for local HTTPS development
 docker/nginx/ssl/*.pem

@@ -56,7 +56,7 @@ class GoogleAuthController extends Controller
         }
 
         // 1. 已綁定 google_id → 直接登入。
-        $user = User::where('google_id', $googleUser->getId())->first();
+        $user = User::query()->where('google_id', $googleUser->getId())->first();
         if ($user) {
             Auth::login($user, true);
 
@@ -64,7 +64,7 @@ class GoogleAuthController extends Controller
         }
 
         // 2. email 已存在但未綁定 → 不建立新帳號（ADR-004）。
-        if (User::where('email', $googleUser->getEmail())->exists()) {
+        if (User::query()->where('email', $googleUser->getEmail())->exists()) {
             $authRoute = session()->pull('google_oauth_intent') === 'register'
                 ? 'register'
                 : 'login';
@@ -82,6 +82,8 @@ class GoogleAuthController extends Controller
             'google_token' => $googleUser->token,
             'google_refresh_token' => $googleUser->refreshToken,
         ]);
+
+        User::assignRoleForNewUser($user);
 
         Auth::login($user, true);
 
@@ -107,7 +109,7 @@ class GoogleAuthController extends Controller
      */
     protected function linkToCurrentUser(SocialiteUser $googleUser): RedirectResponse
     {
-        $owner = User::where('google_id', $googleUser->getId())->first();
+        $owner = User::query()->where('google_id', $googleUser->getId())->first();
         if ($owner && $owner->isNot(Auth::user())) {
             return redirect()->route('profile.show')->with('error', '此 Google 帳號已綁定其他使用者。');
         }

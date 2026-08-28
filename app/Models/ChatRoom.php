@@ -6,12 +6,15 @@ use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Facades\Schema;
 
+/**
+ * @mixin IdeHelperChatRoom
+ */
 class ChatRoom extends Model
 {
     use HasFactory;
@@ -115,6 +118,7 @@ class ChatRoom extends Model
     {
         return self::query()
             ->whereIn('slug', array_keys(self::GLOBAL_THEME_DEFINITIONS))
+            ->whereNull('user_id')
             ->orderByRaw("CASE slug WHEN 'work' THEN 1 WHEN 'study' THEN 2 WHEN 'creative' THEN 3 WHEN 'daily' THEN 4 END")
             ->get()
             ->toArray();
@@ -125,8 +129,13 @@ class ChatRoom extends Model
      */
     public static function getGlobalTheme(string $slug): ?self
     {
+        if (! array_key_exists($slug, self::GLOBAL_THEME_DEFINITIONS)) {
+            return null;
+        }
+
         return self::query()
             ->where('slug', $slug)
+            ->whereNull('user_id')
             ->first();
     }
 
@@ -144,7 +153,7 @@ class ChatRoom extends Model
                 $attributes['type'] = self::TYPE_GLOBAL_THEME;
             }
 
-            static::firstOrCreate(['slug' => $slug], $attributes);
+            static::updateOrCreate(['slug' => $slug], $attributes);
         }
     }
 

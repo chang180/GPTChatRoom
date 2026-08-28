@@ -727,7 +727,7 @@ watch(() => props.currentChatRoom?.id, (newRoomId, oldRoomId) => {
                                     ? 'bg-red-500 hover:bg-red-600'
                                     : 'bg-red-300 cursor-not-allowed'
                             ]"
-                            :title="canClearCurrentChatRoom ? '清除所有聊天記錄' : '全域主題聊天室目前不開放清空'"
+                            :title="canClearCurrentChatRoom ? '清除所有聊天記錄' : '僅管理員可清除全域主題聊天室'"
                         >
                             <i class="fas fa-trash-alt mr-1"></i>
                             清除記錄

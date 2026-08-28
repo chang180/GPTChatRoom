@@ -20,21 +20,11 @@ use Inertia\Inertia;
 
 class ChatRoomController extends Controller
 {
-    protected $gptService;
-
-    protected $messageCacheService;
-
-    protected $conversationContextService;
-
     public function __construct(
-        GPTService $gptService,
-        MessageCacheService $messageCacheService,
-        ConversationContextService $conversationContextService,
-    ) {
-        $this->gptService = $gptService;
-        $this->messageCacheService = $messageCacheService;
-        $this->conversationContextService = $conversationContextService;
-    }
+        protected GPTService $gptService,
+        protected MessageCacheService $messageCacheService,
+        protected ConversationContextService $conversationContextService,
+    ) {}
 
     public function index(Request $request)
     {
@@ -131,7 +121,7 @@ class ChatRoomController extends Controller
             $this->conversationContextService->ensureSummaryCheckpoint($chatRoom);
             $conversation = $this->conversationContextService->buildConversationContext($chatRoom);
             $gptResponse = $this->gptService->sendMessage($data['message'], $conversation);
-            $gptMessageContent = $gptResponse['choices'][0]['message']['content'];
+            $gptMessageContent = $gptResponse->choices[0]->message->content ?? '';
             $gptMessage = Message::create([
                 'user_id' => Auth::id(),
                 'chat_room_id' => $chatRoom->id,
@@ -287,14 +277,14 @@ class ChatRoomController extends Controller
         if (! $this->canClearChatRoom($user, $chatRoom)) {
             return response()->json([
                 'success' => false,
-                'message' => '目前不允許清空全域主題聊天室，後續會在權限模型明確後再開放。',
+                'message' => '僅管理員可清除全域主題聊天室。',
             ], 403);
         }
 
         try {
             // 刪除該聊天室的所有訊息與對話小結切點
-            $deletedCount = Message::where('chat_room_id', $chatRoom->id)->delete();
-            ConversationSummary::where('chat_room_id', $chatRoom->id)->delete();
+            $deletedCount = Message::query()->where('chat_room_id', $chatRoom->id)->delete();
+            ConversationSummary::query()->where('chat_room_id', $chatRoom->id)->delete();
 
             // 清除快取
             $this->messageCacheService->invalidateCacheOnNewMessage($chatRoom->id);
@@ -325,9 +315,9 @@ class ChatRoomController extends Controller
         $roomParam = $request->input('room');
 
         if ($roomParam !== null && $roomParam !== '') {
-            $room = ChatRoom::find($roomParam);
+            $room = ChatRoom::query()->find($roomParam);
 
-            if (! $room || ! $room->isPrivateGroup()) {
+            if (! $room instanceof ChatRoom || ! $room->isPrivateGroup()) {
                 abort(404);
             }
 
@@ -343,14 +333,25 @@ class ChatRoomController extends Controller
     {
         $resolvedTheme = $theme ?? $request->route('theme') ?? $request->get('theme', 'work');
 
-        return ChatRoom::query()
+        if (array_key_exists($resolvedTheme, ChatRoom::GLOBAL_THEME_DEFINITIONS)) {
+            return ChatRoom::query()
+                ->where('slug', $resolvedTheme)
+                ->whereNull('user_id')
+                ->first()
+                ?? ChatRoom::getGlobalTheme('work')
+                ?? ChatRoom::getDefaultForUser($user);
+        }
+
+        $ownedRoom = ChatRoom::query()
             ->where('slug', $resolvedTheme)
-            ->where(function ($query) use ($user) {
-                $query->whereNull('user_id')
-                    ->orWhere('user_id', $user->id);
-            })
-            ->first()
-            ?? ChatRoom::getGlobalTheme('work')
+            ->where('user_id', $user->id)
+            ->first();
+
+        if ($ownedRoom) {
+            return $ownedRoom;
+        }
+
+        return ChatRoom::getGlobalTheme('work')
             ?? ChatRoom::getDefaultForUser($user);
     }
 
@@ -361,7 +362,7 @@ class ChatRoomController extends Controller
         }
 
         if ($chatRoom->isGlobalTheme()) {
-            return false;
+            return $user->isAdmin();
         }
 
         return (int) $chatRoom->user_id === (int) $user->id;

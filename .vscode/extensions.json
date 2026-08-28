@@ -1,0 +1,12 @@
+{
+    "recommendations": [
+        "bmewburn.vscode-intelephense-client",
+        "laravel.vscode-laravel",
+        "vue.volar",
+        "xdebug.php-debug"
+    ],
+    "unwantedRecommendations": [
+        "octref.vetur",
+        "felixfbecker.php-intellisense"
+    ]
+}

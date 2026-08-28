@@ -40,6 +40,36 @@ it('shows the chat room page', function () {
     );
 });
 
+it('repairs global theme metadata and lets any user switch themes', function () {
+    /** @var Authenticatable $user */
+    $user = User::factory()->create();
+    $owner = User::factory()->create();
+
+    foreach (array_keys(ChatRoom::GLOBAL_THEME_DEFINITIONS) as $slug) {
+        ChatRoom::updateOrCreate(['slug' => $slug], [
+            'name' => $slug,
+            'user_id' => $owner->id,
+            'is_active' => true,
+        ]);
+    }
+
+    ChatRoom::ensureGlobalThemes();
+
+    actingAs($user);
+
+    get(route('chat.theme', ['theme' => 'study']))
+        ->assertSuccessful()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('currentChatRoom.slug', 'study')
+            ->where('currentChatRoom.name', '學習'));
+
+    assertDatabaseHas('chat_rooms', [
+        'slug' => 'study',
+        'user_id' => null,
+        'name' => '學習',
+    ]);
+});
+
 it('returns unauthorized for unauthenticated users', function () {
     // Send a GET request to the chat room index
     $response = get(route('chat.index'));
@@ -58,7 +88,7 @@ it('sends a message and receives a response', function () {
 
     ChatRoom::ensureGlobalThemes();
 
-    $mock = \Mockery::mock(GPTService::class);
+    $mock = Mockery::mock(GPTService::class);
     $mock->shouldNotReceive('summarizeMessages');
     $mock->shouldReceive('sendMessage')
         ->once()
@@ -69,15 +99,7 @@ it('sends a message and receives a response', function () {
                 && $conversation[0]['role'] === 'user'
                 && $conversation[0]['content'] === 'Hello, GPT!';
         })
-        ->andReturn([
-            'choices' => [
-                [
-                    'message' => [
-                        'content' => 'Mocked GPT response',
-                    ],
-                ],
-            ],
-        ]);
+        ->andReturn(fakeGptChatResponse('Mocked GPT response'));
     app()->instance(GPTService::class, $mock);
 
     // Generate a CSRF token
@@ -129,14 +151,14 @@ it('loads more messages for the current theme only', function () {
 
     actingAs($user);
 
-    \App\Models\Message::create([
+    Message::create([
         'user_id' => $user->id,
         'chat_room_id' => $workRoom->id,
         'text' => 'work message',
         'sender_type' => 'user',
     ]);
 
-    \App\Models\Message::create([
+    Message::create([
         'user_id' => $user->id,
         'chat_room_id' => $studyRoom->id,
         'text' => 'study message',
@@ -162,21 +184,21 @@ it('includes recent room messages as AI context', function () {
 
     actingAs($user);
 
-    \App\Models\Message::create([
+    Message::create([
         'user_id' => $user->id,
         'chat_room_id' => $workRoom->id,
         'text' => 'Previous user message',
         'sender_type' => 'user',
     ]);
 
-    \App\Models\Message::create([
+    Message::create([
         'user_id' => $user->id,
         'chat_room_id' => $workRoom->id,
         'text' => 'Previous assistant message',
         'sender_type' => 'gpt',
     ]);
 
-    $mock = \Mockery::mock(GPTService::class);
+    $mock = Mockery::mock(GPTService::class);
     $mock->shouldNotReceive('summarizeMessages');
     $mock->shouldReceive('sendMessage')
         ->once()
@@ -188,15 +210,7 @@ it('includes recent room messages as AI context', function () {
                     ['role' => 'user', 'content' => 'Current prompt'],
                 ];
         })
-        ->andReturn([
-            'choices' => [
-                [
-                    'message' => [
-                        'content' => 'Context-aware response',
-                    ],
-                ],
-            ],
-        ]);
+        ->andReturn(fakeGptChatResponse('Context-aware response'));
     app()->instance(GPTService::class, $mock);
 
     Session::start();
@@ -248,18 +262,10 @@ it('dispatches broadcast events for ai messages and final replies', function () 
 
     actingAs($user);
 
-    $mock = \Mockery::mock(GPTService::class);
+    $mock = Mockery::mock(GPTService::class);
     $mock->shouldReceive('sendMessage')
         ->once()
-        ->andReturn([
-            'choices' => [
-                [
-                    'message' => [
-                        'content' => 'AI final reply',
-                    ],
-                ],
-            ],
-        ]);
+        ->andReturn(fakeGptChatResponse('AI final reply'));
     app()->instance(GPTService::class, $mock);
 
     Session::start();
@@ -288,7 +294,7 @@ it('dispatches broadcast events for ai messages and final replies', function () 
     });
 });
 
-it('forbids clearing a global theme chat room', function () {
+it('forbids clearing a global theme chat room for non-admin users', function () {
     /** @var Authenticatable $user */
     $user = User::factory()->create();
 
@@ -316,6 +322,40 @@ it('forbids clearing a global theme chat room', function () {
         ]);
 
     assertDatabaseHas('messages', [
+        'chat_room_id' => $workRoom->id,
+        'text' => 'Message to clear',
+    ]);
+});
+
+it('allows an admin to clear a global theme chat room', function () {
+    /** @var Authenticatable $admin */
+    $admin = User::factory()->admin()->create();
+
+    ChatRoom::ensureGlobalThemes();
+    $workRoom = ChatRoom::getGlobalTheme('work');
+
+    Message::create([
+        'user_id' => $admin->id,
+        'chat_room_id' => $workRoom->id,
+        'text' => 'Message to clear',
+        'sender_type' => 'user',
+    ]);
+
+    actingAs($admin);
+    Session::start();
+
+    $response = delete(route('chat.clear'), [
+        'theme' => 'work',
+        '_token' => csrf_token(),
+    ]);
+
+    $response->assertSuccessful()
+        ->assertJson([
+            'success' => true,
+            'deleted_count' => 1,
+        ]);
+
+    assertDatabaseMissing('messages', [
         'chat_room_id' => $workRoom->id,
         'text' => 'Message to clear',
     ]);
@@ -388,7 +428,7 @@ it('creates a summary checkpoint after response when enough overflow exists for 
     actingAs($user);
     seedFeatureRoomMessages($workRoom, $user, 24);
 
-    $mock = \Mockery::mock(GPTService::class);
+    $mock = Mockery::mock(GPTService::class);
     $mock->shouldReceive('summarizeMessages')
         ->once()
         ->andReturn('Compressed history');
@@ -399,15 +439,7 @@ it('creates a summary checkpoint after response when enough overflow exists for 
                 && count($conversation) === 20
                 && ! str_contains($conversation[0]['content'] ?? '', ConversationContextService::SUMMARY_CONTENT_PREFIX);
         })
-        ->andReturn([
-            'choices' => [
-                [
-                    'message' => [
-                        'content' => 'Reply without waiting for summarize',
-                    ],
-                ],
-            ],
-        ]);
+        ->andReturn(fakeGptChatResponse('Reply without waiting for summarize'));
     app()->instance(GPTService::class, $mock);
 
     Session::start();

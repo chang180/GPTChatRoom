@@ -13,6 +13,7 @@ use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Testing\TestResponse;
 use Inertia\Testing\AssertableInertia as Assert;
 
 use function Pest\Laravel\actingAs;
@@ -224,7 +225,7 @@ it('joins the room after authentication when a pending invitation cookie exists'
     );
     $request->setUserResolver(fn () => $invitee);
 
-    $response = \Illuminate\Testing\TestResponse::fromBaseResponse(
+    $response = TestResponse::fromBaseResponse(
         PendingChatRoomInvitation::completeAfterAuthentication($request)
     );
 
@@ -408,9 +409,7 @@ it('keeps the global theme send-message flow working', function () {
     ChatRoom::ensureGlobalThemes();
 
     $mock = Mockery::mock(GPTService::class);
-    $mock->shouldReceive('sendMessage')->once()->andReturn([
-        'choices' => [['message' => ['content' => 'theme reply']]],
-    ]);
+    $mock->shouldReceive('sendMessage')->once()->andReturn(fakeGptChatResponse('theme reply'));
     $this->app->instance(GPTService::class, $mock);
 
     actingAs($user)

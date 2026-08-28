@@ -4,6 +4,8 @@ namespace App\Services;
 
 use Illuminate\Support\Facades\Log;
 use OpenAI\Laravel\Facades\OpenAI;
+use OpenAI\Responses\Chat\CreateResponse;
+use OpenAI\Responses\StreamResponse;
 
 class GPTService
 {
@@ -13,14 +15,20 @@ class GPTService
 
     protected const COMPRESS_SUMMARY_SYSTEM_PROMPT = 'Compress the following conversation summary for AI context. Keep names, decisions, and open tasks. Maximum 80 words. Output only the compressed summary.';
 
-    protected $apiKey;
+    protected ?string $apiKey;
+
+    protected string $model;
 
     public function __construct()
     {
         $this->apiKey = config('openai.api_key');
+        $this->model = config('openai.model');
     }
 
-    public function sendMessage($message, array $conversation = [])
+    /**
+     * @param  array<int, array{role: string, content: string}>  $conversation
+     */
+    public function sendMessage(string $message, array $conversation = []): CreateResponse
     {
         if (! $this->apiKey) {
             throw new \Exception('API key missing');
@@ -28,7 +36,7 @@ class GPTService
 
         try {
             $response = OpenAI::chat()->create([
-                'model' => 'gpt-5-nano',
+                'model' => $this->model,
                 'messages' => $this->buildMessages($message, $conversation),
             ]);
 
@@ -42,10 +50,9 @@ class GPTService
     /**
      * 發送消息並以流式方式返回響應
      *
-     * @param  string  $message  用戶消息
-     * @return \Illuminate\Http\Response
+     * @param  array<int, array{role: string, content: string}>  $conversation
      */
-    public function sendMessageStream($message, array $conversation = [])
+    public function sendMessageStream(string $message, array $conversation = []): StreamResponse
     {
         if (! $this->apiKey) {
             throw new \Exception('API key missing');
@@ -53,7 +60,7 @@ class GPTService
 
         try {
             $stream = OpenAI::chat()->createStreamed([
-                'model' => 'gpt-5-nano',
+                'model' => $this->model,
                 'messages' => $this->buildMessages($message, $conversation),
             ]);
 
@@ -79,7 +86,7 @@ class GPTService
 
         try {
             $response = OpenAI::chat()->create([
-                'model' => 'gpt-5-nano',
+                'model' => $this->model,
                 'max_tokens' => config('conversation.summarize_max_tokens'),
                 'messages' => [
                     ['role' => 'system', 'content' => self::SUMMARIZE_SYSTEM_PROMPT],
@@ -108,7 +115,7 @@ class GPTService
 
         try {
             $response = OpenAI::chat()->create([
-                'model' => 'gpt-5-nano',
+                'model' => $this->model,
                 'max_tokens' => config('conversation.summary_compress_max_tokens'),
                 'messages' => [
                     ['role' => 'system', 'content' => self::COMPRESS_SUMMARY_SYSTEM_PROMPT],

@@ -2,6 +2,8 @@
 
 use App\Services\GPTService;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
+use Mockery\MockInterface;
+use OpenAI\Responses\Chat\CreateResponse;
 use Tests\TestCase;
 
 /*
@@ -47,12 +49,25 @@ expect()->extend('toBeOne', function () {
 */
 
 /**
- * @return GPTService&\Mockery\MockInterface
+ * @return GPTService&MockInterface
  */
-function mockGptService(): \App\Services\GPTService
+function mockGptService(): GPTService
 {
-    /** @var \App\Services\GPTService&\Mockery\MockInterface $mock */
-    $mock = mock(\App\Services\GPTService::class);
+    /** @var GPTService&MockInterface $mock */
+    $mock = mock(GPTService::class);
 
     return $mock;
+}
+
+function fakeGptChatResponse(string $content): CreateResponse
+{
+    return CreateResponse::fake([
+        'choices' => [
+            [
+                'message' => [
+                    'content' => $content,
+                ],
+            ],
+        ],
+    ]);
 }
