@@ -16,7 +16,7 @@
 - 資料庫：SQLite
 - 聊天室：4 個固定全域主題聊天室 + 邀請制私人小群組（最多 20 人）
 - 認證：Jetstream + Google OAuth（本機 `local` 關閉，佈署環境啟用）
-- AI 回應：OpenAI `gpt-5-nano`
+- AI 回應：OpenAI `gpt-5.6-luna`
 - 即時體驗：AI 串流 SSE；房間事件 Reverb（主題 public channel、私人 private channel）
 
 ## 本階段已完成

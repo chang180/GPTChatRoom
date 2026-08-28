@@ -96,7 +96,7 @@ protected $fillable = ['user_id', 'text', 'sender_type'];
 ```env
 OPENAI_API_KEY=your_openai_api_key_here
 OPENAI_ORGANIZATION=your_organization_id_here
-OPENAI_MODEL=gpt-5-nano
+OPENAI_MODEL=gpt-5.6-luna
 OPENAI_REQUEST_TIMEOUT=30
 ```
 

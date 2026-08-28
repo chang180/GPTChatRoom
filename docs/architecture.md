@@ -70,7 +70,7 @@ docs/
 - `sendMessage()`: 一次性回應
 - `sendMessageStream()`: 串流回應
 
-目前模型寫死為 `gpt-5-nano`，且 controller 會傳入當前聊天室最近一段訊息作為上下文。
+模型由 `config/openai.php` 讀取 `OPENAI_MODEL`（預設 `gpt-5.6-luna`），且 controller 會傳入當前聊天室最近一段訊息作為上下文。
 
 ### `app/Services/ConversationContextService.php`
 

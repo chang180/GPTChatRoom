@@ -62,7 +62,7 @@ php artisan view:cache     # 可選
 在既有 `OPENAI_API_KEY` 之外，正式區 `.env` 請補上（若尚未設定）：
 
 ```env
-OPENAI_MODEL=gpt-5-nano
+OPENAI_MODEL=gpt-5.6-luna
 OPENAI_REQUEST_TIMEOUT=30
 ```
 
@@ -159,7 +159,7 @@ php artisan serve
 ```env
 OPENAI_API_KEY=your_openai_api_key
 OPENAI_ORGANIZATION=your_openai_organization
-OPENAI_MODEL=gpt-5-nano
+OPENAI_MODEL=gpt-5.6-luna
 OPENAI_REQUEST_TIMEOUT=30
 ```
 

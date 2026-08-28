@@ -97,7 +97,7 @@ GPTChatRoom/
 #### GPTService 服務層
 - `sendMessage()`: 標準 GPT API 呼叫
 - `sendMessageStream()`: 串流式 GPT API 呼叫
-- 使用 `gpt-5-nano` 模型
+- 使用 `gpt-5.6-luna` 模型
 - 完整的錯誤處理和日誌記錄
 
 ### 3. 前端介面
