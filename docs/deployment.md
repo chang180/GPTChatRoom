@@ -73,22 +73,63 @@ php artisan migrate --force
 - 使用電子郵件／密碼（Fortify）；登入頁會顯示 Google 不可用說明。
 - 勿將 production 的 redirect URI 指到 `localhost`，除非另行在 Console 登錄且你確定要測本機 OAuth（本專案預設仍由 `local` 環境關閉）。
 
-## Ably 即時廣播（房間級多人同步）
+## Reverb 即時廣播（房間級多人同步）
 
-房間內「他人新訊息、AI 最終訊息、清除聊天室」依賴 Laravel Broadcasting + Ably + 前端 Echo。**AI 串流仍走 SSE**，與 Ably 無關。
+房間內「他人新訊息、AI 最終訊息、清除聊天室」依賴 Laravel Broadcasting + **自架 Reverb Hub** + 前端 Echo（`laravel-echo` + `pusher-js`）。**AI 串流仍走 SSE**，與 Reverb 無關。
+
+> **歷史：** 早期 Phase 1 曾用 Ably；自 2026-08 起正式環境改接 Hub `reverb-hub.chang180backend.com`。Ably 套件與 `ably` driver 仍留在 repo 供 rollback，**新佈署請用 Reverb**。
 
 ### 本機開發（預設）
 
-- `.env.example` 預設 `BROADCAST_CONNECTION=log`：事件只寫入 log，**不會**推到 Ably。
-- 未設定 `VITE_ABLY_ENABLED=true`，或後端 `ABLY_KEY` 缺失／`BROADCAST_CONNECTION` 非 `ably` 時，前端**不會**建立 `window.Echo`（`config('broadcasting.client_enabled')` 為 false），本機單人開發可正常運作。
+- 建議 `BROADCAST_CONNECTION=log`：事件只寫入 log，**不會**推到 WebSocket。
+- 未設 `VITE_REVERB_ENABLED=true`，或後端 `REVERB_APP_KEY` 缺失／`BROADCAST_CONNECTION` 非 `reverb` 時，前端**不會**建立 `window.Echo`（`config('broadcasting.client_enabled')` 為 false），本機單人開發可正常運作。
 - **另一分頁／另一位使用者不會即時同步**——在此設定下屬預期，不是程式故障。
-- 若要在本機驗證多人同步：向 [Ably](https://ably.com/) 申請 key，改為 `BROADCAST_CONNECTION=ably`、填入 `ABLY_KEY`、設 `VITE_ABLY_ENABLED=true`，並重新執行 `npm run dev`（或 `npm run build`）。
+- 若要在本機驗證多人同步：指向可用的 Reverb Hub，設 `BROADCAST_CONNECTION=reverb`、填齊 `REVERB_*` / `VITE_REVERB_*`，並重新執行 `npm run dev`（或 `npm run build`）。
 
-`config/broadcasting.php` 另有一項保護：若設為 `ably` 但未填 `ABLY_KEY`，會自動退回 `log`。
+`config/broadcasting.php` 另有一項保護：若設為 `reverb` 但未填 `REVERB_APP_KEY`，會自動退回 `log`。
 
 ### 佈署時（staging / production）
 
 **務必**設定下列變數，否則正式環境不會有多人即時同步：
+
+```env
+BROADCAST_CONNECTION=reverb
+
+REVERB_APP_ID=your_app_id
+REVERB_APP_KEY=your_app_key
+REVERB_APP_SECRET=your_app_secret
+REVERB_HOST=reverb-hub.chang180backend.com
+REVERB_PORT=443
+REVERB_SCHEME=https
+
+VITE_REVERB_ENABLED=true
+VITE_REVERB_APP_KEY="${REVERB_APP_KEY}"
+VITE_REVERB_HOST="${REVERB_HOST}"
+VITE_REVERB_PORT="${REVERB_PORT}"
+VITE_REVERB_SCHEME="${REVERB_SCHEME}"
+```
+
+佇署流程補充：
+
+1. 佇署後執行 `npm ci && npm run build`（`VITE_REVERB_*` 在 build 時寫入前端）。
+2. `php artisan config:cache` 後確認 `config('broadcasting.default')` 為 `reverb`。
+3. Reverb Hub 需已運行且允許此 app 的 key／secret；Hub 網域與 `REVERB_HOST` 一致。
+4. 前端透過 WebSocket 連 Hub；**私人房**使用 `Echo.private()`，**主題房**使用 `Echo.channel()`。`REVERB_APP_SECRET` 僅在伺服器 `.env`，勿暴露到公開前端 bundle。
+
+### 佇署後 Reverb 驗證（由維運／人類在 staging / production 執行）
+
+自動化測試只覆蓋事件 `broadcastOn` 與 channel 授權，**不連 Reverb Hub**。請在已佈署環境手動確認：
+
+- [ ] 瀏覽器 Console：`window.Echo` 存在；WebSocket 連線為 `connected`
+- [ ] 主題房：兩個帳號／兩個瀏覽器進同一主題，一方發 direct message，另一方即時出現
+- [ ] 私人房：成員雙方同上；`/broadcasting/auth` 對非成員為 403
+- [ ] 清除聊天室後，同房另一端列表清空
+
+驗證失敗時常見原因：`BROADCAST_CONNECTION` 仍為 `log`／`null`、未 build 前端、`REVERB_*` 或 `VITE_REVERB_*` 不一致、Hub 未運行、未登入導致 private channel 授權失敗。
+
+### Rollback 至 Ably（僅緊急還原）
+
+若需暫時改回 Ably：
 
 ```env
 BROADCAST_CONNECTION=ably
@@ -97,24 +138,7 @@ ABLY_TOKEN_EXPIRY=3600
 VITE_ABLY_ENABLED=true
 ```
 
-佇署流程補充：
-
-1. 佇署後執行 `npm ci && npm run build`（`VITE_ABLY_ENABLED` 在 build 時寫入前端）。
-2. `php artisan config:cache` 後確認 `config('broadcasting.default')` 為 `ably`。
-3. 若使用 **revocable** Ably key，`ABLY_TOKEN_EXPIRY` 不得超過 3600（秒）。
-
-前端透過 `POST /broadcasting/auth` 授權；**私人房**使用 `Echo.private()`，**主題房**使用 `Echo.channel()`。API key 僅在伺服器 `.env`，勿放入 `VITE_*`。
-
-### 佇署後 Ably 驗證（由維運／人類在 staging / production 執行）
-
-自動化測試只覆蓋事件 `broadcastOn` 與 channel 授權，**不連 Ably 雲端**。請在已佈署環境手動確認：
-
-- [ ] 瀏覽器 Console：`window.Echo` 存在；Ably 連線為 `connected`
-- [ ] 主題房：兩個帳號／兩個瀏覽器進同一主題，一方發 direct message，另一方即時出現
-- [ ] 私人房：成員雙方同上；`/broadcasting/auth` 對非成員為 403
-- [ ] 清除聊天室後，同房另一端列表清空
-
-驗證失敗時常見原因：`BROADCAST_CONNECTION` 仍為 `log`／`null`、未 build 前端、`ABLY_KEY` 錯誤、未登入導致 private channel 授權失敗。
+並重新 `npm run build`。現行前端預設走 Reverb；Ably rollback 需確認 checkout 仍含對應前端設定。
 
 ### 私人聊天室（private_group）
 
@@ -177,7 +201,7 @@ php artisan test tests/Feature/Controllers/ChatRoomControllerTest.php
 - [ ] `composer install --no-dev` 完成
 - [ ] `php artisan migrate --force` 成功
 - [ ] `OPENAI_API_KEY` 已設定
-- [ ] `BROADCAST_CONNECTION=ably`、`ABLY_KEY`、`VITE_ABLY_ENABLED=true` 已設定，且已 `npm run build`
+- [ ] `BROADCAST_CONNECTION=reverb`、`REVERB_*` 與 `VITE_REVERB_*` 已設定，且已 `npm run build`
 - [ ] （可選）`php artisan config:cache` 等
 - [ ] （可選）執行相關 Pest 測試
 - [ ] 以實際聊天室 smoke test 一則 AI 訊息

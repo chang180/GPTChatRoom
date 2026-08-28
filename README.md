@@ -10,13 +10,13 @@ Laravel 13 + Inertia.js + Vue 3 的聊天學習專案，目標是整理出一個
 - 已完成 OpenAI 串流回應
 - 已完成房間內最近訊息的 AI 上下文帶入
 - 已完成超過 20 則時的增量對話小結切點（後端上下文壓縮，含 DB 鎖防競爭，不顯示於 UI）
-- 已完成 Ably WebSocket Phase 1
+- 已完成 Reverb 房間級即時同步（自架 Hub）
 - 已完成管理員後台（`/admin`）與公開主題清除權限控管
-- 目前 AI 串流使用 `SSE`，房間級即時同步使用 Ably
+- 目前 AI 串流使用 `SSE`，房間級即時同步使用 **Reverb**
 
 ## 技術棧
 
-- Backend: Laravel 13, Jetstream, Sanctum, `openai-php/laravel`, Ably broadcaster
+- Backend: Laravel 13, Jetstream, Sanctum, `openai-php/laravel`, Reverb（`pusher-php-server` + Echo）
 - Frontend: Vue 3, `@inertiajs/vue3`, Inertia server v3, Vite, Tailwind CSS
 - Database: SQLite
 - Cache: Laravel Cache
@@ -35,7 +35,7 @@ Laravel 13 + Inertia.js + Vue 3 的聊天學習專案，目標是整理出一個
 
 ## 生產環境佈署
 
-以 `git pull` 更新後，**務必**執行 `php artisan migrate --force`，並確認 `OPENAI_API_KEY` 有效。**多人即時同步**須在 staging／production 設定 Ably（本機預設 `BROADCAST_CONNECTION=log`，可不連）。細節與 agent 檢查清單見 [`docs/deployment.md`](docs/deployment.md)。
+以 `git pull` 更新後，**務必**執行 `php artisan migrate --force`，並確認 `OPENAI_API_KEY` 有效。**多人即時同步**須在 staging／production 設定 **Reverb**（本機預設 `BROADCAST_CONNECTION=log`，可不連）。細節與 agent 檢查清單見 [`docs/deployment.md`](docs/deployment.md)。
 
 ### 2026-08-28 更新（admin 角色、主題房修復、Laravel 13 升級）
 
@@ -66,7 +66,28 @@ OPENAI_MODEL=gpt-5-nano
 OPENAI_REQUEST_TIMEOUT=30
 ```
 
+正式區若需多人即時同步，另見下方 Reverb 設定（[`docs/deployment.md`](docs/deployment.md) § Reverb）。
+
 模型名稱改 `config/openai.php` 讀取 `OPENAI_MODEL`，不再寫死在程式碼。
+
+#### 2b. Reverb 即時廣播（正式區必設，若仍用舊 Ably 變數請改）
+
+```env
+BROADCAST_CONNECTION=reverb
+REVERB_APP_ID=
+REVERB_APP_KEY=
+REVERB_APP_SECRET=
+REVERB_HOST=reverb-hub.chang180backend.com
+REVERB_PORT=443
+REVERB_SCHEME=https
+VITE_REVERB_ENABLED=true
+VITE_REVERB_APP_KEY="${REVERB_APP_KEY}"
+VITE_REVERB_HOST="${REVERB_HOST}"
+VITE_REVERB_PORT="${REVERB_PORT}"
+VITE_REVERB_SCHEME="${REVERB_SCHEME}"
+```
+
+佈署後 `npm run build` 會把 `VITE_REVERB_*` 編進前端；**勿再使用** `BROADCAST_CONNECTION=ably` / `VITE_ABLY_ENABLED`（除非緊急 rollback，見 deployment.md）。
 
 #### 3. 本次 migration（依時間序）
 
@@ -92,6 +113,7 @@ Migration 跑完後，四主題應為：`工作` / `學習` / `創意` / `日常
 - [ ] 以 **admin** 登入 → 導覽列有「管理」→ `/admin` 可開啟使用者列表
 - [ ] admin 可清除公開主題聊天室；非 admin 不可
 - [ ] 發送 AI 訊息仍正常（確認 `OPENAI_API_KEY` 有效）
+- [ ] 主題房雙瀏覽器即時同步正常（Reverb WebSocket `connected`）
 - [ ] `php artisan test` 在 staging 可選跑；本 release 基準：**108 passed, 7 skipped**
 
 #### 6. 套件版本（供 agent 對照，勿自行降版）
@@ -107,8 +129,9 @@ Migration 跑完後，四主題應為：`工作` / `學習` / `創意` / `日常
 | 主題仍顯示英文、無法切換 | migration 未跑或修補失敗 | `php artisan migrate --force`，再查 `chat_rooms` 四列 `user_id` 是否為 `NULL`、`name` 是否中文 |
 | 看不到「管理」 | 前端未 build 或該帳號非 admin | `npm run build`；查 `users.is_admin` |
 | OpenAI 失敗 | 缺 key 或 model 名稱 | 確認 `OPENAI_API_KEY`、`OPENAI_MODEL` |
+| 無即時同步 | 仍用 Ably 變數或 Reverb 未 build | 改 `REVERB_*` / `VITE_REVERB_*` 並 `npm run build`（見 §2b） |
 
-完整 Ably、Google OAuth 等既有佈署說明仍見 [`docs/deployment.md`](docs/deployment.md)。
+完整 Reverb、Google OAuth 等佈署說明見 [`docs/deployment.md`](docs/deployment.md)。
 
 ## 專案文件
 
@@ -140,7 +163,7 @@ OPENAI_MODEL=gpt-5-nano
 OPENAI_REQUEST_TIMEOUT=30
 ```
 
-本機預設 **不必** 設定 Ably（`.env.example` 為 `BROADCAST_CONNECTION=log`，多人即時不同步屬正常）。若要在本機測雙瀏覽器同步，或於佇署環境啟用，請見 [`docs/deployment.md`](docs/deployment.md) § Ably 即時廣播。
+本機預設 **不必** 設定 Reverb（`BROADCAST_CONNECTION=log`，多人即時不同步屬正常）。正式區與本機多人同步設定見 [`docs/deployment.md`](docs/deployment.md) § Reverb 即時廣播。
 
 ## 開發指令
 
@@ -162,6 +185,6 @@ php artisan test
 
 ## 後續重點
 
-目前專案已完成第一階段房間級即時同步。現況是保留 SSE 作為 AI 串流方案，另外使用 Ably 廣播同步「使用者新訊息、AI 最終訊息、聊天室清除」。
+目前專案已完成第一階段房間級即時同步。現況是保留 SSE 作為 AI 串流方案，另外使用 **Reverb** 廣播同步「使用者新訊息、AI 最終訊息、聊天室清除」。
 
 細節請看 [`docs/realtime-websocket-plan.md`](docs/realtime-websocket-plan.md)。

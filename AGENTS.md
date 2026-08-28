@@ -28,7 +28,7 @@ Upgraded **2026-08-28** (admin role + dependency refresh). Details and rules: `l
 - **inertiajs/inertia-laravel 3.3** + **@inertiajs/vue3 3.7**
 - **Jetstream 5**, **Fortify**, **Sanctum 4**
 - **Pest 4**, **openai-php/laravel 0.19**
-- **Ably** broadcasting, **Vite 7**, **@inertiajs/vite 3**, **Vue 3**, **Tailwind 3**
+- **Reverb** broadcasting（`pusher-php-server` + Echo）, **Vite 7**, **@inertiajs/vite 3**, **Vue 3**, **Tailwind 3**
 
 ## Private-room phased development
 

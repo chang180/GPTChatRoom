@@ -7,7 +7,7 @@
 - **Agent 總索引（套件版本 / 規範）：** [`../AGENTS.md`](../AGENTS.md) →  canonical [`.cursor/rules/laravel-boost.mdc`](../.cursor/rules/laravel-boost.mdc)
 - **分 phase 實作（private-room）：** [`.ai-dev/private-room/handoff.md`](private-room/handoff.md)（Phase 1–5 已完成，見 `progress.md`）
 - 專案開發文件：[`../docs/README.md`](../docs/README.md)
-- **生產佈署提醒**：[`../docs/deployment.md`](../docs/deployment.md)（migration、Google OAuth、**Ably 即時廣播**；本機預設 `BROADCAST_CONNECTION=log`）
+- **生產佈署提醒**：[`../docs/deployment.md`](../docs/deployment.md)（migration、Google OAuth、**Reverb 即時廣播**；本機預設 `BROADCAST_CONNECTION=log`）
 - 架構說明：[`../docs/architecture.md`](../docs/architecture.md)
 - 即時通訊規劃：[`../docs/realtime-websocket-plan.md`](../docs/realtime-websocket-plan.md)
 
@@ -19,7 +19,7 @@
 
 - 四個公開主題房 + 邀請制私人小群組房
 - 有 AI 回覆串流（SSE）
-- 有 Ably 房間級事件同步（主題 public channel、私人 private channel）
+- 有 Reverb 房間級事件同步（主題 public channel、私人 private channel）
 
 ## 真實功能狀態
 
@@ -32,7 +32,7 @@
 - 前端 **`ChatSidebar`**：主題區 + 私人房列表、建立房／邀請 modal；`ChatRoom.vue` 依 `roomMode` 使用 `Echo.private()` 或 `Echo.channel()`
 - Dashboard / Welcome / AppLayout 三入口（公開聊天、私人聊天、設定）
 - 訊息持久化、歷史分頁、direct / AI 模式、GPT SSE 串流、對話小結切點、清除聊天室（權限依房型：主題房規則 vs 私人房僅 owner）
-- Ably WebSocket + Laravel Echo；多瀏覽器房間同步（**佇署必設 Ably**；本機預設 log 不同步，見 `deployment.md` § Ably）
+- Reverb WebSocket + Laravel Echo；多瀏覽器房間同步（**佇署必設 Reverb**；本機預設 log 不同步，見 `deployment.md` § Reverb）
 
 ### 尚未完成
 
@@ -48,7 +48,7 @@
 
 前端在 `resources/js/Pages/ChatRoom.vue` 使用 `axios` 的 `onDownloadProgress` 手動解析 SSE 內容。
 
-房間級共享事件則透過 Ably + Laravel Echo 同步。
+房間級共享事件則透過 Reverb + Laravel Echo 同步。
 
 ### 2. 多聊天室：四主題房 + 私人小群組
 
